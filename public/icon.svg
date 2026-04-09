@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 배경 -->
+  <rect width="512" height="512" rx="112" fill="#1f2937"/>
+
+  <!-- 큰 버블 (왼쪽) -->
+  <circle cx="192" cy="304" r="108" fill="none" stroke="white" stroke-width="16" opacity="0.92"/>
+  <ellipse cx="148" cy="255" rx="34" ry="19" fill="white" opacity="0.28" transform="rotate(-30 148 255)"/>
+
+  <!-- 중간 버블 (오른쪽 위) -->
+  <circle cx="348" cy="176" r="64" fill="none" stroke="white" stroke-width="13" opacity="0.92"/>
+  <ellipse cx="322" cy="150" rx="20" ry="11" fill="white" opacity="0.28" transform="rotate(-30 322 150)"/>
+
+  <!-- 작은 버블 (오른쪽 아래) -->
+  <circle cx="374" cy="342" r="38" fill="none" stroke="white" stroke-width="10" opacity="0.92"/>
+  <ellipse cx="360" cy="327" rx="12" ry="7" fill="white" opacity="0.28" transform="rotate(-30 360 327)"/>
+</svg>
