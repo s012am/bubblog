@@ -133,7 +133,13 @@ export default function FollowFeed() {
     return result.slice(0, 15)
   }, [posts, following, followedProfiles])
 
-  const reset = useCallback(() => {
+  const feedPostIdsRef = useRef('')
+
+  // post ID가 바뀔 때만 버블 위치 초기화
+  useEffect(() => {
+    const newIds = feedPosts.map(p => p.id).join(',')
+    if (newIds === feedPostIdsRef.current) return
+    feedPostIdsRef.current = newIds
     const el = containerRef.current
     if (!el) return
     const w = el.clientWidth, h = el.clientHeight
@@ -141,9 +147,14 @@ export default function FollowFeed() {
     bubblesRef.current = initBubbles(w, h, feedPosts)
   }, [feedPosts])
 
+  // 애니메이션 루프는 한 번만 시작
   useEffect(() => {
-    reset()
-    const onResize = () => reset()
+    const el = containerRef.current
+    if (!el) return
+    const onResize = () => {
+      const w = el.clientWidth, h = el.clientHeight
+      sizeRef.current = { w, h }
+    }
     window.addEventListener('resize', onResize)
 
     const DAMPING = 0.999, MAX_SPEED = 10.0, WANDER = 0.05
@@ -209,7 +220,7 @@ export default function FollowFeed() {
     }
     rafRef.current = requestAnimationFrame(loop)
     return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener('resize', onResize) }
-  }, [reset])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const onMouseDown = useCallback((e, bubbleId) => {
     e.preventDefault()
