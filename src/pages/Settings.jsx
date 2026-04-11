@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 export default function Settings() {
   const navigate = useNavigate()
   const { themeId, setThemeId } = useTheme()
-  const { logout } = useAuth()
+  const { logout, session } = useAuth()
 
   return (
     <div className="min-h-screen">
@@ -54,7 +54,7 @@ export default function Settings() {
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--card-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--card-border)', boxShadow: 'var(--card-shadow)' }}>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest px-5 pt-4 pb-2">계정</p>
           {[
-            { label: '이메일', sub: 'ramram@bubblog.io' },
+            { label: '이메일', sub: session?.user?.email || '' },
             { label: '비밀번호 변경', sub: '' },
           ].map((item, i, arr) => (
             <div key={item.label}>
