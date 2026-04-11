@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
+import { haptic } from '../lib/haptic'
 import { useProfile } from '../context/ProfileContext'
 import { useFollow } from '../context/FollowContext'
 import { supabase } from '../lib/supabase'
@@ -441,7 +442,7 @@ export default function Explore() {
                     </Link>
                     {!isMe && (
                       <button
-                        onClick={() => isFollowing(user.username) ? unfollow(user.username) : follow(user.username)}
+                        onClick={() => { haptic(15); isFollowing(user.username) ? unfollow(user.username) : follow(user.username) }}
                         className="px-3 py-1 rounded-full text-xs font-semibold transition-all flex-shrink-0"
                         style={{
                           background: isFollowing(user.username) ? 'var(--input-bg)' : 'rgba(30,30,30,0.85)',

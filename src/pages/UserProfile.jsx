@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
 import { useFollow } from '../context/FollowContext'
 import { supabase } from '../lib/supabase'
+import { haptic } from '../lib/haptic'
 import PostCard from '../components/PostCard'
 import InfoSheet from '../components/InfoSheet'
 
@@ -378,7 +379,7 @@ export default function UserProfile() {
           <div className="flex items-center gap-1.5 w-full mt-1">
             <h1 className="font-extrabold text-gray-800 tracking-tight flex-1" style={{ fontSize: '18px' }}>{user.nickname || (user.loaded ? name : '')}</h1>
             <button
-              onClick={() => followed ? unfollow(name) : follow(name)}
+              onClick={() => { haptic(15); followed ? unfollow(name) : follow(name) }}
               className="px-4 py-1 rounded-full text-xs font-semibold transition-all"
               style={(() => {
                 const isDark = document.documentElement.hasAttribute('data-dark')

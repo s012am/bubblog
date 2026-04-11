@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
+import { haptic } from '../lib/haptic'
 import { useProfile } from '../context/ProfileContext'
 import { useBookmark } from '../context/BookmarkContext'
 import { supabase } from '../lib/supabase'
@@ -300,6 +301,7 @@ export default function PostDetail() {
   // fetchedPost일 때 좋아요/리버블 상태를 로컬에서도 업데이트
   const handleToggleLike = async () => {
     if (!post || !currentUserId) return
+    haptic(12)
     const newLiked = await toggleLike(post.id, post.likes)
     if (!postFromCtx && fetchedPost) {
       setFetchedPost(prev => ({
@@ -313,6 +315,7 @@ export default function PostDetail() {
 
   const handleToggleRebubble = async () => {
     if (!post || !currentUserId) return
+    haptic(12)
     const newRebubbled = await toggleRebubble(post.id, post.rebubbles)
     if (!postFromCtx && fetchedPost) {
       setFetchedPost(prev => ({
