@@ -371,7 +371,7 @@ export default function BubbleHome() {
   }, [])
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100dvh - 64px)' }}>
+    <div className="flex flex-col fixed inset-0" style={{ bottom: '64px' }}>
       {/* 헤더 */}
       <div
         className="px-6 pt-4 pb-0"
@@ -481,7 +481,7 @@ export default function BubbleHome() {
       )}
 
       {/* 버블 캔버스 */}
-      {!showList && <div ref={containerRef} className="relative flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+      {!showList && <div ref={containerRef} className="relative flex-1 overflow-hidden">
         {activeTab === 'drift' && posts.filter(p => p.authorId === currentUserId).length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-sm text-gray-300 text-center leading-relaxed">
