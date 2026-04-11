@@ -141,7 +141,7 @@ export default function Settings() {
 
       {/* 탈퇴 확인 모달 */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-8" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-24" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
           <div className="w-full max-w-sm rounded-3xl p-6 flex flex-col gap-4" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}>
             <div className="flex flex-col gap-1">
               <p className="text-base font-bold text-gray-800">정말 탈퇴하시겠어요?</p>
