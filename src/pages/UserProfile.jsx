@@ -89,12 +89,13 @@ export default function UserProfile() {
   const { posts: myPosts } = usePosts()
   const { isFollowing, follow, unfollow } = useFollow()
 
-  const [user, setUser] = useState({ name, bio: '', avatar: null })
+  const [user, setUser] = useState({ name, nickname: null, bio: '', avatar: null, loaded: false })
 
   useEffect(() => {
     supabase.from('profiles').select('username, nickname, bio, avatar_url').eq('username', name).single()
       .then(({ data }) => {
-        if (data) setUser({ name: data.username, nickname: data.nickname, bio: data.bio || '', avatar: data.avatar_url || null })
+        if (data) setUser({ name: data.username, nickname: data.nickname, bio: data.bio || '', avatar: data.avatar_url || null, loaded: true })
+        else setUser(prev => ({ ...prev, loaded: true }))
       })
   }, [name])
 
@@ -323,7 +324,7 @@ export default function UserProfile() {
 
           {/* 이름 + Follow + Info */}
           <div className="flex items-center gap-1.5 w-full mt-1">
-            <h1 className="font-extrabold text-gray-800 tracking-tight flex-1" style={{ fontSize: '18px' }}>{user.nickname || name}</h1>
+            <h1 className="font-extrabold text-gray-800 tracking-tight flex-1" style={{ fontSize: '18px' }}>{user.loaded ? (user.nickname || name) : ''}</h1>
             <button
               onClick={() => followed ? unfollow(name) : follow(name)}
               className="px-4 py-1 rounded-full text-xs font-semibold transition-all"
@@ -423,7 +424,7 @@ export default function UserProfile() {
         <InfoSheet
           onClose={() => setInfoOpen(false)}
           avatar={user.avatar}
-          name={user.nickname || name}
+          name={user.loaded ? (user.nickname || name) : name}
           username={name}
           bio={user.bio}
           bubbles={userPosts.length}
