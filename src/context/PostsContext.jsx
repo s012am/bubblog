@@ -145,6 +145,7 @@ export function PostsProvider({ children }) {
     const dbChanges = {}
     if (changes.title !== undefined) dbChanges.title = changes.title
     if (changes.content !== undefined) dbChanges.content = changes.content
+    if (changes.excerpt !== undefined) dbChanges.excerpt = changes.excerpt
     if (changes.tags !== undefined) dbChanges.tags = changes.tags
     if (changes.type !== undefined) dbChanges.type = changes.type
     if (changes.expiresAt !== undefined) dbChanges.expires_at = changes.expiresAt ? new Date(changes.expiresAt).toISOString() : null
