@@ -302,7 +302,7 @@ export default function FollowFeed() {
   }, [])
 
   return (
-    <div className="flex flex-col fixed inset-0" style={{ bottom: '64px' }}>
+    <div className="flex flex-col" style={{ height: '100dvh', paddingBottom: '64px' }}>
       {/* 헤더 */}
       <div style={{ background: 'var(--nav-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--divider)' }}>
         <div className="px-6 pt-4 pb-3">
