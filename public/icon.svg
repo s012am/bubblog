@@ -2,15 +2,16 @@
   <!-- 흰색 배경 -->
   <rect width="512" height="512" rx="112" fill="white"/>
 
-  <!-- 큰 버블 (왼쪽) -->
-  <circle cx="192" cy="304" r="108" fill="none" stroke="#1f2937" stroke-width="16"/>
-  <ellipse cx="148" cy="255" rx="34" ry="19" fill="#1f2937" opacity="0.18" transform="rotate(-30 148 255)"/>
+  <!-- 24x24 → 512x512 scale: x21.33 -->
+  <!-- 큰 버블: cx=8 cy=15 r=5 → cx=170.7 cy=320 r=106.7 -->
+  <circle cx="170.7" cy="320" r="106.7" fill="none" stroke="#1f2937" stroke-width="17"/>
+  <ellipse cx="96" cy="241.7" rx="34.1" ry="19.2" fill="#1f2937" opacity="0.18" transform="rotate(-30 96 241.7)"/>
 
-  <!-- 중간 버블 (오른쪽 위) -->
-  <circle cx="348" cy="176" r="64" fill="none" stroke="#1f2937" stroke-width="13"/>
-  <ellipse cx="322" cy="150" rx="20" ry="11" fill="#1f2937" opacity="0.18" transform="rotate(-30 322 150)"/>
+  <!-- 중간 버블: cx=18 cy=7 r=3 → cx=384 cy=149.3 r=64 -->
+  <circle cx="384" cy="149.3" r="64" fill="none" stroke="#1f2937" stroke-width="15.4"/>
+  <ellipse cx="320" cy="85.3" rx="19.2" ry="10.7" fill="#1f2937" opacity="0.18" transform="rotate(-30 320 85.3)"/>
 
-  <!-- 작은 버블 (오른쪽 아래) -->
-  <circle cx="374" cy="342" r="38" fill="none" stroke="#1f2937" stroke-width="10"/>
-  <ellipse cx="360" cy="327" rx="12" ry="7" fill="#1f2937" opacity="0.18" transform="rotate(-30 360 327)"/>
+  <!-- 작은 버블: cx=19.5 cy=17.5 r=1.8 → cx=416 cy=373.3 r=38.4 -->
+  <circle cx="416" cy="373.3" r="38.4" fill="none" stroke="#1f2937" stroke-width="14"/>
+  <ellipse cx="384" cy="341.3" rx="11.7" ry="6.8" fill="#1f2937" opacity="0.18" transform="rotate(-30 384 341.3)"/>
 </svg>
