@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 const slides = [
   {
@@ -52,18 +52,45 @@ const slides = [
 
 export default function Onboarding({ onDone }) {
   const [idx, setIdx] = useState(0)
+  const [dragX, setDragX] = useState(0)
+  const [dragging, setDragging] = useState(false)
+  const startXRef = useRef(null)
   const isLast = idx === slides.length - 1
 
-  const next = () => {
-    if (isLast) { onDone() }
-    else setIdx((v) => v + 1)
+  const goTo = (i) => setIdx(Math.max(0, Math.min(slides.length - 1, i)))
+
+  const handleTouchStart = (e) => {
+    startXRef.current = e.touches[0].clientX
+    setDragging(true)
+    setDragX(0)
+  }
+  const handleTouchMove = (e) => {
+    if (startXRef.current === null) return
+    const dx = e.touches[0].clientX - startXRef.current
+    setDragX(dx)
+  }
+  const handleTouchEnd = () => {
+    const dx = dragX
+    setDragging(false)
+    setDragX(0)
+    startXRef.current = null
+    if (dx < -50 && idx < slides.length - 1) goTo(idx + 1)
+    else if (dx > 50 && idx > 0) goTo(idx - 1)
   }
 
-  const slide = slides[idx]
+  const next = () => {
+    if (isLast) onDone()
+    else goTo(idx + 1)
+  }
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-between px-8 py-16" style={{ background: 'white' }}>
-
+    <div
+      className="fixed inset-0 z-[200] flex flex-col items-center justify-between px-8 py-16 overflow-hidden"
+      style={{ background: 'white' }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* 상단 스킵 */}
       <div className="w-full flex justify-end">
         {!isLast && (
@@ -73,25 +100,37 @@ export default function Onboarding({ onDone }) {
         )}
       </div>
 
-      {/* 중앙 콘텐츠 */}
-      <div className="flex flex-col items-center gap-8 flex-1 justify-center">
+      {/* 슬라이드 영역 */}
+      <div className="flex flex-col items-center gap-8 flex-1 justify-center w-full">
         <div
-          key={idx}
-          className="flex flex-col items-center gap-8"
-          style={{ animation: 'onboard-in 0.35s ease both' }}
+          className="flex w-full"
+          style={{
+            transform: `translateX(calc(${-idx * 100}% + ${dragX}px))`,
+            transition: dragging ? 'none' : 'transform 0.35s ease',
+            willChange: 'transform',
+          }}
         >
-          <div className="w-24 h-24 rounded-3xl flex items-center justify-center"
-            style={{ background: 'rgba(0,0,0,0.04)' }}>
-            {slide.icon}
-          </div>
-          <div className="flex flex-col items-center gap-3 text-center">
-            <h2 className="font-extrabold text-gray-800 leading-snug whitespace-pre-line" style={{ fontSize: '24px' }}>
-              {slide.title}
-            </h2>
-            <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-line">
-              {slide.desc}
-            </p>
-          </div>
+          {slides.map((slide, i) => (
+            <div
+              key={i}
+              className="flex flex-col items-center gap-8 flex-shrink-0 w-full"
+            >
+              <div
+                className="w-24 h-24 rounded-3xl flex items-center justify-center"
+                style={{ background: 'rgba(0,0,0,0.04)' }}
+              >
+                {slide.icon}
+              </div>
+              <div className="flex flex-col items-center gap-3 text-center">
+                <h2 className="font-extrabold text-gray-800 leading-snug whitespace-pre-line" style={{ fontSize: '24px' }}>
+                  {slide.title}
+                </h2>
+                <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-line">
+                  {slide.desc}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -121,13 +160,6 @@ export default function Onboarding({ onDone }) {
           {isLast ? '시작하기' : '다음'}
         </button>
       </div>
-
-      <style>{`
-        @keyframes onboard-in {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   )
 }
