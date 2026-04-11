@@ -450,7 +450,7 @@ export default function BubbleHome() {
 
       {/* 버블 캔버스 */}
       {!showList && <div ref={containerRef} className="relative flex-1 overflow-hidden">
-        {activeTab === 'drift' && posts.length === 0 && (
+        {activeTab === 'drift' && posts.filter(p => p.authorId === currentUserId).length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-sm text-gray-300 text-center leading-relaxed">
               첫 번째 버블을 띄워보세요.
