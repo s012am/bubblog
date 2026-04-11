@@ -93,8 +93,7 @@ export default function UserProfile() {
 
   useEffect(() => {
     supabase.from('profiles').select('username, nickname, bio, avatar_url').eq('username', name).single()
-      .then(({ data, error }) => {
-        console.log('[UserProfile] data:', data, 'error:', error)
+      .then(({ data }) => {
         if (data) setUser({ name: data.username, nickname: data.nickname, bio: data.bio || '', avatar: data.avatar_url || null })
       })
   }, [name])
@@ -349,7 +348,7 @@ export default function UserProfile() {
             </button>
           </div>
 
-          {user.bio && <p className="text-xs text-gray-400 w-full">{user.bio}</p>}
+          <p className="text-xs text-gray-400 w-full">{user.bio || 'No bio yet'}</p>
         </div>
 
         {/* 탭 (목록보기가 아닐 때만) */}
