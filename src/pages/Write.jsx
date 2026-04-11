@@ -145,7 +145,7 @@ export default function Write() {
         excerpt: contentText.slice(0, 100).trim(),
         tags,
       })
-      navigate(`/post/${editPost.id}`)
+      navigate(`/post/${editPost.id}`, { replace: true })
     } else {
       const newPost = await addPost({
         title: title.trim(),
@@ -161,7 +161,7 @@ export default function Write() {
       })
       // 제출 성공 시 draft 삭제
       deleteDraft(sessionDraftId.current)
-      if (newPost) navigate(`/post/${newPost.id}`)
+      if (newPost) navigate(`/post/${newPost.id}`, { replace: true })
     }
   }
 
