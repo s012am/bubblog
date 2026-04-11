@@ -1,11 +1,28 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme, THEMES } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 
 export default function Settings() {
   const navigate = useNavigate()
   const { themeId, setThemeId } = useTheme()
   const { logout, session } = useAuth()
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true)
+    const { error } = await supabase.rpc('delete_my_account')
+    if (error) {
+      setDeleting(false)
+      setDeleteConfirm(false)
+      alert('탈퇴 중 오류가 발생했습니다. 다시 시도해주세요.')
+      return
+    }
+    await logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <div className="min-h-screen">
@@ -103,7 +120,7 @@ export default function Settings() {
           <div className="pb-1" />
         </div>
 
-        {/* 로그아웃 */}
+        {/* 로그아웃 / 탈퇴 */}
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--card-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--card-border)', boxShadow: 'var(--card-shadow)' }}>
           <button
             className="w-full flex items-center px-5 py-3.5 text-left hover:bg-red-50 transition-colors"
@@ -111,9 +128,46 @@ export default function Settings() {
           >
             <span className="text-sm text-red-400">로그아웃</span>
           </button>
+          <div className="h-px bg-gray-100 mx-5" />
+          <button
+            className="w-full flex items-center px-5 py-3.5 text-left hover:bg-red-50 transition-colors"
+            onClick={() => setDeleteConfirm(true)}
+          >
+            <span className="text-sm text-red-300">계정 탈퇴</span>
+          </button>
         </div>
 
       </div>
+
+      {/* 탈퇴 확인 모달 */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-8" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
+          <div className="w-full max-w-sm rounded-3xl p-6 flex flex-col gap-4" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}>
+            <div className="flex flex-col gap-1">
+              <p className="text-base font-bold text-gray-800">정말 탈퇴하시겠어요?</p>
+              <p className="text-sm text-gray-400 leading-relaxed">작성한 글, 팔로우 정보 등 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                disabled={deleting}
+                className="flex-1 h-11 rounded-2xl text-sm font-semibold text-gray-500 transition-colors"
+                style={{ background: 'var(--input-bg)', border: '1px solid var(--divider)' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 h-11 rounded-2xl text-sm font-semibold text-white transition-colors"
+                style={{ background: deleting ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.85)' }}
+              >
+                {deleting ? '탈퇴 중...' : '탈퇴하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
