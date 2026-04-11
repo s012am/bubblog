@@ -44,7 +44,7 @@ export default function SplashScreen({ onDone }) {
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-2 -translate-y-16"
+      className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-2 -translate-y-11"
       style={{
         background: bg,
         opacity: out ? 0 : 1,
