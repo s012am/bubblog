@@ -6,6 +6,14 @@
   box-sizing: border-box;
 }
 
+html, body {
+  background: white;
+}
+
+[data-dark="true"] body, [data-dark="true"] html {
+  background: #1c1c1e;
+}
+
 :root {
   --card-bg: rgba(255,255,255,0.7);
   --card-bg-light: rgba(255,255,255,0.38);
