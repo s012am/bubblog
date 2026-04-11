@@ -612,6 +612,7 @@ export default function BubbleHome() {
           onClose={() => setInfoOpen(false)}
           avatar={profile.avatar}
           name={profile.name}
+          username={profile.id}
           bio={profile.bio}
           bubbles={posts.length}
           log={logCount}

@@ -2,7 +2,7 @@ import { useRef, useState, useLayoutEffect, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 
 export default function InfoSheet({
-  onClose, avatar, name, bio, bubbles, log, pop,
+  onClose, avatar, name, username, bio, bubbles, log, pop,
   followers, following,
   followerUsers = [], followingUsers = [],
   profileUrl,
@@ -188,7 +188,10 @@ export default function InfoSheet({
                   : <span className="text-base font-bold text-gray-400">{name[0]?.toUpperCase()}</span>}
               </div>
               <div className="flex flex-col gap-1 flex-1">
-                <p className="font-bold text-gray-800">{name}</p>
+                <div className="flex items-baseline gap-1.5">
+                  <p className="font-bold text-gray-800">{name}</p>
+                  {username && <p className="text-xs text-gray-400">@{username}</p>}
+                </div>
                 <div className="flex items-center gap-2.5">
                   <button className="text-xs text-gray-500" onClick={() => { setActiveTab('followers'); setExpanded(true) }}>
                     <span className="font-bold text-gray-800">{followers}</span> Followers

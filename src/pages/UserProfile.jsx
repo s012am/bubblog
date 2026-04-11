@@ -424,6 +424,7 @@ export default function UserProfile() {
           onClose={() => setInfoOpen(false)}
           avatar={user.avatar}
           name={name}
+          username={name}
           bio={user.bio}
           bubbles={userPosts.length}
           log={userPosts.filter(p => p.type === 'log' || !p.type).length}
