@@ -89,7 +89,14 @@ export default function UserProfile() {
   const { posts: myPosts } = usePosts()
   const { isFollowing, follow, unfollow } = useFollow()
 
-  const [user, setUser] = useState({ name, nickname: null, bio: '', avatar: null, loaded: false })
+  const cachedPost = useMemo(() => myPosts.find(p => p.authorUsername === name), [myPosts, name])
+  const [user, setUser] = useState(() => ({
+    name,
+    nickname: cachedPost?.author || null,
+    bio: '',
+    avatar: cachedPost?.authorAvatar || null,
+    loaded: false,
+  }))
 
   useEffect(() => {
     supabase.from('profiles').select('username, nickname, bio, avatar_url').eq('username', name).single()
@@ -324,7 +331,7 @@ export default function UserProfile() {
 
           {/* 이름 + Follow + Info */}
           <div className="flex items-center gap-1.5 w-full mt-1">
-            <h1 className="font-extrabold text-gray-800 tracking-tight flex-1" style={{ fontSize: '18px' }}>{user.loaded ? (user.nickname || name) : ''}</h1>
+            <h1 className="font-extrabold text-gray-800 tracking-tight flex-1" style={{ fontSize: '18px' }}>{user.nickname || (user.loaded ? name : '')}</h1>
             <button
               onClick={() => followed ? unfollow(name) : follow(name)}
               className="px-4 py-1 rounded-full text-xs font-semibold transition-all"
