@@ -302,7 +302,7 @@ export default function FollowFeed() {
   }, [])
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 64px)' }}>
+    <div className="flex flex-col min-h-dvh">
       {/* 헤더 */}
       <div style={{ background: 'var(--nav-bg)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--divider)' }}>
         <div className="px-6 pt-4 pb-3">
@@ -339,7 +339,7 @@ export default function FollowFeed() {
       </div>
 
       {/* 버블 캔버스 */}
-      <div ref={containerRef} className="relative flex-1 overflow-hidden" style={{ transform: 'translateY(var(--ptr-y, 0px))', transition: 'transform 0.05s linear' }}>
+      <div ref={containerRef} className="relative overflow-hidden" style={{ height: 'calc(100dvh - 160px)' }}>
         {following.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" className="w-12 h-12 text-gray-200">
