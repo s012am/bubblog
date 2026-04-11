@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
 import { useFollow } from '../context/FollowContext'
-import { SAMPLE_USERS } from '../data/sampleUsers'
+import { supabase } from '../lib/supabase'
 
 const RADII = [65, 58, 54, 62]
 
@@ -112,6 +112,19 @@ export default function FollowFeed() {
   const [, setTick] = useState(0)
   const [, setIsDragging] = useState(false)
   const [flippedIds, setFlippedIds] = useState(new Set())
+  const [followedProfiles, setFollowedProfiles] = useState({}) // username → profile
+
+  useEffect(() => {
+    if (following.length === 0) { setFollowedProfiles({}); return }
+    supabase.from('profiles').select('username, nickname, avatar_url')
+      .in('username', following)
+      .then(({ data }) => {
+        if (!data) return
+        const map = {}
+        data.forEach(p => { map[p.username] = p })
+        setFollowedProfiles(map)
+      })
+  }, [following])
 
   const feedPosts = useMemo(() => {
     const seen = new Set()
@@ -296,24 +309,25 @@ export default function FollowFeed() {
         {/* 팔로잉 유저 줄 */}
         {following.length > 0 && (
           <div className="flex gap-4 px-5 pb-4 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-            {following.map((name) => {
-              const user = SAMPLE_USERS.find((u) => u.name === name)
+            {following.map((username) => {
+              const p = followedProfiles[username]
+              const displayName = p?.nickname || username
               return (
                 <Link
-                  key={name}
-                  to={`/user/${name}`}
+                  key={username}
+                  to={`/user/${username}`}
                   className="flex flex-col items-center gap-1.5 flex-shrink-0"
                 >
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center"
+                    className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden"
                     style={{ background: 'var(--avatar-bg)', border: '2px solid var(--card-border)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
                   >
-                    {user?.avatar
-                      ? <img src={user.avatar} alt={name} className="w-full h-full object-cover rounded-full" />
-                      : <span className="text-sm font-bold text-gray-400">{name[0].toUpperCase()}</span>
+                    {p?.avatar_url
+                      ? <img src={p.avatar_url} alt={displayName} className="w-full h-full object-cover rounded-full" />
+                      : <span className="text-sm font-bold text-gray-400">{displayName[0].toUpperCase()}</span>
                     }
                   </div>
-                  <span className="text-[10px] font-medium text-gray-400 max-w-[48px] truncate">{name}</span>
+                  <span className="text-[10px] font-medium text-gray-400 max-w-[48px] truncate">{displayName}</span>
                 </Link>
               )
             })}

@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
 import { useProfile } from '../context/ProfileContext'
 import { useFollow } from '../context/FollowContext'
-import { useRebubble } from '../context/RebubbleContext'
+import { supabase } from '../lib/supabase'
 
 function highlightText(text, query) {
   if (!query) return text
@@ -31,7 +31,7 @@ function formatRemaining(expiresAt) {
 }
 
 function DiscoverPostCard({ post }) {
-  const { isRebubbled } = useRebubble()
+  const { isRebubbled, isLiked } = usePosts()
   const d = new Date(post.date)
   const formattedDate = `${d.getFullYear()} · ${String(d.getMonth() + 1).padStart(2, '0')} · ${String(d.getDate()).padStart(2, '0')}`
   const authorName = post.author
@@ -80,11 +80,11 @@ function DiscoverPostCard({ post }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 text-gray-400">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5">
+          <div className="flex items-center gap-1" style={{ color: isLiked(post.id) ? '#ef4444' : '#9ca3af' }}>
+            <svg viewBox="0 0 24 24" fill={isLiked(post.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5">
               <path d="M12 21C12 21 3 14.5 3 8.5a4.5 4.5 0 0 1 9-0.5 4.5 4.5 0 0 1 9 0.5C21 14.5 12 21 12 21z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span className="text-xs">0</span>
+            <span className="text-xs">{post.likes?.length || 0}</span>
           </div>
           <div className="flex items-center gap-1" style={{ color: isRebubbled(post.id) ? '#3b82f6' : '#9ca3af' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-3.5 h-3.5">
@@ -95,7 +95,7 @@ function DiscoverPostCard({ post }) {
               <circle cx="19.5" cy="17.5" r="1.8" strokeWidth={1.1} />
               <ellipse cx="18.8" cy="16.8" rx="0.55" ry="0.32" fill="currentColor" opacity={0.25} transform="rotate(-30 18.8 16.8)" />
             </svg>
-            <span className="text-xs">{isRebubbled(post.id) ? 1 : 0}</span>
+            <span className="text-xs">{post.rebubbles?.length || 0}</span>
           </div>
           <div className="flex items-center gap-1 text-gray-400">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5">
@@ -110,7 +110,7 @@ function DiscoverPostCard({ post }) {
 }
 
 export default function Explore() {
-  const { posts } = usePosts()
+  const { posts, currentUserId } = usePosts()
   const { profile } = useProfile()
   const { isFollowing, follow, unfollow } = useFollow()
   const [query, setQuery] = useState('')
@@ -119,6 +119,8 @@ export default function Explore() {
   const [history, setHistory] = useState(() => {
     try { return JSON.parse(localStorage.getItem('bubblog_search_history') || '[]') } catch { return [] }
   })
+  const [searchedUsers, setSearchedUsers] = useState([])
+  const [userSearching, setUserSearching] = useState(false)
 
   const addToHistory = (term) => {
     if (!term.trim()) return
@@ -144,6 +146,23 @@ export default function Explore() {
 
   const q = query.trim().toLowerCase()
 
+  // 닉네임/아이디로 유저 검색 (디바운스 300ms)
+  useEffect(() => {
+    if (!q) { setSearchedUsers([]); return }
+    setUserSearching(true)
+    const timer = setTimeout(async () => {
+      const escaped = q.replace(/%/g, '\\%').replace(/_/g, '\\_')
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, nickname, bio, avatar_url')
+        .or(`username.ilike.%${escaped}%,nickname.ilike.%${escaped}%`)
+        .limit(15)
+      setSearchedUsers(data || [])
+      setUserSearching(false)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [q])
+
   const matchedPosts = useMemo(() => {
     if (!q) return []
     return posts.filter((p) =>
@@ -166,15 +185,6 @@ export default function Explore() {
     return [...tagSet]
   }, [posts, q])
 
-  const matchedAuthors = useMemo(() => {
-    if (!q) return []
-    const results = []
-    if (profile.name.toLowerCase().includes(q)) {
-      results.push({ name: profile.name, avatar: profile.avatar, bio: profile.bio, postCount: posts.length, isMe: true })
-    }
-    return results
-  }, [profile, posts, q])
-
   const [shuffleSeed] = useState(Math.random)
 
   // 탐색 화면용 데이터
@@ -192,7 +202,7 @@ export default function Explore() {
         const recency = Math.max(0, 10 - ageDays * 0.3)
         const comments = (p.comments?.length ?? 0) * 3
         const tags = (p.tags?.length ?? 0) * 1
-        const rebubbles = (p.rebubbleCount ?? 0) * 4
+        const rebubbles = (p.rebubbles?.length ?? 0) * 4
         return { ...p, _score: recency + comments + tags + rebubbles }
       })
       .sort((a, b) => b._score - a._score)
@@ -208,7 +218,7 @@ export default function Explore() {
   }, [posts, shuffleSeed])
 
   const shownPosts = activeTab === 'people' || activeTab === 'tags' ? [] : matchedPosts
-  const shownPeople = activeTab === 'posts' || activeTab === 'tags' ? [] : matchedAuthors
+  const shownPeople = activeTab === 'posts' || activeTab === 'tags' ? [] : searchedUsers
   const shownTags = activeTab === 'posts' || activeTab === 'people' ? [] : matchedTags
   const tagFilteredPosts = useMemo(() =>
     activeTab === 'tags' && q
@@ -339,7 +349,7 @@ export default function Explore() {
         )}
 
         {/* 검색 결과 없음 */}
-        {q && shownPosts.length === 0 && shownPeople.length === 0 && shownTags.length === 0 && tagFilteredPosts.length === 0 && (
+        {q && !userSearching && shownPosts.length === 0 && shownPeople.length === 0 && shownTags.length === 0 && tagFilteredPosts.length === 0 && (
           <div className="flex flex-col items-center justify-center pt-16 gap-2">
             <p className="text-sm text-gray-400">
               <span className="font-semibold text-gray-600">"{query}"</span> 에 대한 결과가 없습니다.
@@ -406,40 +416,45 @@ export default function Explore() {
           <section>
             <h2 className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-3">사람</h2>
             <div className="flex flex-col gap-2">
-              {shownPeople.map((author) => (
-                <div
-                  key={author.name}
-                  className="flex items-center gap-3 p-4 rounded-2xl"
-                  style={{ background: 'var(--card-bg)', border: '1px solid var(--divider)', boxShadow: 'var(--card-shadow)' }}
-                >
+              {shownPeople.map((user) => {
+                const displayName = user.nickname || user.username
+                const postCount = posts.filter(p => p.authorId === user.id).length
+                const isMe = user.id === currentUserId
+                return (
                   <div
-                    className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'var(--avatar-bg)' }}
+                    key={user.id}
+                    className="flex items-center gap-3 p-4 rounded-2xl"
+                    style={{ background: 'var(--card-bg)', border: '1px solid var(--divider)', boxShadow: 'var(--card-shadow)' }}
                   >
-                    {author.avatar
-                      ? <img src={author.avatar} alt="avatar" className="w-full h-full object-cover" />
-                      : <span className="text-sm font-bold text-gray-500">{author.name[0].toUpperCase()}</span>}
+                    <Link to={`/user/${user.username}`} className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0" style={{ background: 'var(--avatar-bg)' }}>
+                      {user.avatar_url
+                        ? <img src={user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                        : <span className="text-sm font-bold text-gray-500">{displayName[0]?.toUpperCase()}</span>}
+                    </Link>
+                    <Link to={`/user/${user.username}`} className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-1.5">
+                        <p className="text-sm font-bold text-gray-800">{highlightText(displayName, query)}</p>
+                        <p className="text-xs text-gray-400">@{highlightText(user.username, query)}</p>
+                      </div>
+                      {user.bio && <p className="text-xs text-gray-400 mt-0.5 truncate">{user.bio}</p>}
+                      <p className="text-xs text-gray-300 mt-0.5">글 {postCount}개</p>
+                    </Link>
+                    {!isMe && (
+                      <button
+                        onClick={() => isFollowing(user.username) ? unfollow(user.username) : follow(user.username)}
+                        className="px-3 py-1 rounded-full text-xs font-semibold transition-all flex-shrink-0"
+                        style={{
+                          background: isFollowing(user.username) ? 'var(--input-bg)' : 'rgba(30,30,30,0.85)',
+                          color: isFollowing(user.username) ? '#6b7280' : 'white',
+                          border: isFollowing(user.username) ? '1px solid var(--divider)' : 'none',
+                        }}
+                      >
+                        {isFollowing(user.username) ? 'Following' : 'Follow'}
+                      </button>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-800">{highlightText(author.name, query)}</p>
-                    {author.bio && <p className="text-xs text-gray-400 mt-0.5">{author.bio}</p>}
-                    <p className="text-xs text-gray-300 mt-0.5">글 {author.postCount}개</p>
-                  </div>
-                  {!author.isMe && (
-                    <button
-                      onClick={() => isFollowing(author.name) ? unfollow(author.name) : follow(author.name)}
-                      className="px-3 py-1 rounded-full text-xs font-semibold transition-all flex-shrink-0"
-                      style={{
-                        background: isFollowing(author.name) ? 'var(--input-bg)' : 'rgba(30,30,30,0.85)',
-                        color: isFollowing(author.name) ? '#6b7280' : 'white',
-                        border: isFollowing(author.name) ? '1px solid var(--divider)' : 'none',
-                      }}
-                    >
-                      {isFollowing(author.name) ? 'Following' : 'Follow'}
-                    </button>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </section>
         )}

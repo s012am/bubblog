@@ -4,6 +4,7 @@ import { usePosts } from '../context/PostsContext'
 import { useProfile } from '../context/ProfileContext'
 import { useRebubble } from '../context/RebubbleContext'
 import { useFollow } from '../context/FollowContext'
+import { supabase } from '../lib/supabase'
 import InfoSheet from '../components/InfoSheet'
 import PostCard from '../components/PostCard'
 
@@ -65,11 +66,40 @@ export default function BubbleHome() {
   const { posts, deletePost, currentUserId } = usePosts()
   const { profile } = useProfile()
   const { rebubbledIds, toggle: toggleRebubble } = useRebubble()
-  const { isFollowing, follow, unfollow, following } = useFollow()
+  const { isFollowing, follow, unfollow } = useFollow()
   const popCount = posts.filter((p) => p.type === 'pop').length
   const logCount = posts.filter((p) => p.type === 'log' || !p.type).length
-  const followed = isFollowing(profile.name)
   const [infoOpen, setInfoOpen] = useState(false)
+  const [followerUsers, setFollowerUsers] = useState([])
+  const [followingUsers, setFollowingUsers] = useState([])
+
+  // 현재 유저의 팔로워/팔로잉 목록 fetch
+  useEffect(() => {
+    if (!currentUserId) return
+    const mapProfile = (p) => ({
+      name: p.nickname || p.username,
+      avatar: p.avatar_url || null,
+      bio: p.bio || '',
+      linkTo: `/user/${p.username}`,
+    })
+    ;(async () => {
+      const { data: fwrRows } = await supabase.from('follows').select('follower_id').eq('following_id', currentUserId)
+      if (fwrRows?.length > 0) {
+        const { data: fps } = await supabase.from('profiles').select('username, nickname, avatar_url, bio').in('id', fwrRows.map(r => r.follower_id))
+        setFollowerUsers((fps || []).map(mapProfile))
+      } else {
+        setFollowerUsers([])
+      }
+
+      const { data: fwgRows } = await supabase.from('follows').select('following_id').eq('follower_id', currentUserId)
+      if (fwgRows?.length > 0) {
+        const { data: fps } = await supabase.from('profiles').select('username, nickname, avatar_url, bio').in('id', fwgRows.map(r => r.following_id))
+        setFollowingUsers((fps || []).map(mapProfile))
+      } else {
+        setFollowingUsers([])
+      }
+    })()
+  }, [currentUserId])
 
   const [activeTab, setActiveTab] = useState('drift')
   const [tick, setTick] = useState(0)
@@ -438,7 +468,8 @@ export default function BubbleHome() {
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-3xl mx-auto px-5 py-6 grid gap-4">
               {(() => {
-                const filtered = listTab === 'all' ? posts : listTab === 'log' ? posts.filter(p => p.type === 'log' || !p.type) : posts.filter(p => p.type === 'pop')
+                const myPosts = posts.filter(p => p.authorId === currentUserId)
+                const filtered = listTab === 'all' ? myPosts : listTab === 'log' ? myPosts.filter(p => p.type === 'log' || !p.type) : myPosts.filter(p => p.type === 'pop')
                 return filtered.length === 0
                   ? <p className="text-sm text-gray-300 text-center py-10">글이 없습니다.</p>
                   : filtered.map((post) => <PostCard key={post.id} post={post} showMenu />)
@@ -617,10 +648,10 @@ export default function BubbleHome() {
           bubbles={posts.length}
           log={logCount}
           pop={popCount}
-          followers={followed ? 1 : 0}
-          following={following.length}
-          followerUsers={followed ? [{ name: profile.name, avatar: profile.avatar, bio: profile.bio }] : []}
-          followingUsers={following.map((n) => ({ name: n, avatar: null, bio: '', linkTo: `/user/${n}` }))}
+          followers={followerUsers.length}
+          following={followingUsers.length}
+          followerUsers={followerUsers}
+          followingUsers={followingUsers}
           profileUrl={`${window.location.origin}/`}
         />
       )}

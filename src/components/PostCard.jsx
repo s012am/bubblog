@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
-import { useRebubble } from '../context/RebubbleContext'
 import { useBookmark } from '../context/BookmarkContext'
 
 const cardStyle = {
@@ -32,8 +31,7 @@ function formatRemaining(expiresAt) {
 
 export default function PostCard({ post, showMenu = false }) {
   const navigate = useNavigate()
-  const { deletePost, isLiked, currentUserId } = usePosts()
-  const { isRebubbled } = useRebubble()
+  const { deletePost, isLiked, isRebubbled, currentUserId } = usePosts()
   const { toggleBookmark, isBookmarked } = useBookmark()
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -114,7 +112,7 @@ export default function PostCard({ post, showMenu = false }) {
                   <circle cx="19.5" cy="17.5" r="1.8" strokeWidth={1.1} />
                   <ellipse cx="18.8" cy="16.8" rx="0.55" ry="0.32" fill="currentColor" opacity={0.25} transform="rotate(-30 18.8 16.8)" />
                 </svg>
-                <span className="text-xs">{isRebubbled(post.id) ? 1 : 0}</span>
+                <span className="text-xs">{post.rebubbles?.length || 0}</span>
               </div>
               {/* 댓글 */}
               <div className="flex items-center gap-1 text-gray-400">

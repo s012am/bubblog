@@ -8,15 +8,15 @@ export default function Stats() {
   const logCount = posts.filter((p) => p.type === 'log' || !p.type).length
   const popCount = posts.filter((p) => p.type === 'pop').length
 
-  const totalRebubbles = posts.reduce((s, p) => s + (p.rebubbleCount ?? 0), 0)
+  const totalRebubbles = posts.reduce((s, p) => s + (p.rebubbles?.length ?? 0), 0)
 
   const totalViews = posts.reduce((s, p) => s + (p.viewCount || 0), 0)
 
-const mostRebubbled = posts.length === 0 ? null : posts.reduce((best, p) =>
-    (p.rebubbleCount ?? 0) > (best.rebubbleCount ?? 0) ? p : best
+  const mostRebubbled = posts.length === 0 ? null : posts.reduce((best, p) =>
+    (p.rebubbles?.length ?? 0) > (best.rebubbles?.length ?? 0) ? p : best
   , posts[0])
 
-  const mostRebubbledCount = mostRebubbled ? (mostRebubbled.rebubbleCount ?? 0) : 0
+  const mostRebubbledCount = mostRebubbled ? (mostRebubbled.rebubbles?.length ?? 0) : 0
 
   const statItems = [
     { label: 'Log', value: logCount, sub: '글' },

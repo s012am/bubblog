@@ -49,6 +49,7 @@ function mapPost(raw) {
     authorId: raw.author_id,
     authorAvatar: raw.profiles?.avatar_url || null,
     likes: (raw.likes || []).map(l => l.user_id),
+    rebubbles: (raw.rebubbles || []).map(r => r.user_id),
     comments: rootComments,
     readTime: Math.max(1, Math.ceil((raw.content || '').length / 500)),
   }
@@ -58,6 +59,7 @@ const POST_SELECT = `
   *,
   profiles(username, nickname, avatar_url),
   likes(user_id),
+  rebubbles(user_id),
   comments(id, author_id, content, created_at, parent_id, profiles(username, nickname))
 `
 
@@ -167,18 +169,22 @@ export function PostsProvider({ children }) {
     setPosts(prev => prev.map(p => p.id !== postId ? p : { ...p, viewCount: p.viewCount + 1 }))
   }
 
-  const toggleLike = async (postId) => {
+  const toggleLike = async (postId, currentLikes = null) => {
     if (!currentUserId) return
-    const post = posts.find(p => p.id === postId)
-    const already = (post?.likes || []).includes(currentUserId)
+    const postInState = posts.find(p => p.id === postId)
+    const likes = postInState?.likes ?? currentLikes ?? []
+    const already = likes.includes(currentUserId)
 
     if (already) {
       await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', currentUserId)
-      setPosts(prev => prev.map(p => p.id !== postId ? p : { ...p, likes: p.likes.filter(id => id !== currentUserId) }))
     } else {
       await supabase.from('likes').insert({ post_id: postId, user_id: currentUserId })
-      setPosts(prev => prev.map(p => p.id !== postId ? p : { ...p, likes: [...(p.likes || []), currentUserId] }))
     }
+    setPosts(prev => prev.map(p => p.id !== postId ? p : {
+      ...p,
+      likes: already ? p.likes.filter(id => id !== currentUserId) : [...(p.likes || []), currentUserId],
+    }))
+    return !already
   }
 
   const isLiked = (postId) => {
@@ -186,6 +192,34 @@ export function PostsProvider({ children }) {
     const p = posts.find(p => p.id === postId)
     return p ? (p.likes || []).includes(currentUserId) : false
   }
+
+  const toggleRebubble = async (postId, currentRebubbles = null) => {
+    if (!currentUserId) return
+    const postInState = posts.find(p => p.id === postId)
+    const rebubbles = postInState?.rebubbles ?? currentRebubbles ?? []
+    const already = rebubbles.includes(currentUserId)
+
+    if (already) {
+      await supabase.from('rebubbles').delete().eq('post_id', postId).eq('user_id', currentUserId)
+    } else {
+      await supabase.from('rebubbles').insert({ post_id: postId, user_id: currentUserId })
+    }
+    setPosts(prev => prev.map(p => p.id !== postId ? p : {
+      ...p,
+      rebubbles: already ? p.rebubbles.filter(id => id !== currentUserId) : [...(p.rebubbles || []), currentUserId],
+    }))
+    return !already
+  }
+
+  const isRebubbled = (postId) => {
+    if (!currentUserId) return false
+    const p = posts.find(p => p.id === postId)
+    return p ? (p.rebubbles || []).includes(currentUserId) : false
+  }
+
+  const rebubbledIds = posts
+    .filter(p => currentUserId && (p.rebubbles || []).includes(currentUserId))
+    .map(p => p.id)
 
   const addComment = async (postId, content) => {
     if (!currentUserId) return
@@ -253,7 +287,7 @@ export function PostsProvider({ children }) {
   }
 
   return (
-    <PostsContext.Provider value={{ posts, currentUserId, addPost, updatePost, deletePost, renameAuthor, addComment, deleteComment, addReply, deleteReply, incrementView, toggleLike, isLiked, recentlyViewed, addRecentlyViewed }}>
+    <PostsContext.Provider value={{ posts, currentUserId, addPost, updatePost, deletePost, renameAuthor, addComment, deleteComment, addReply, deleteReply, incrementView, toggleLike, isLiked, toggleRebubble, isRebubbled, rebubbledIds, recentlyViewed, addRecentlyViewed }}>
       {children}
     </PostsContext.Provider>
   )

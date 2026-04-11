@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
 import { useProfile } from '../context/ProfileContext'
-import { useFollow } from '../context/FollowContext'
+import { supabase } from '../lib/supabase'
 import { useDraft } from '../context/DraftContext'
 import { useTheme, THEMES } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
@@ -131,9 +131,8 @@ function StreakGrid({ posts }) {
 }
 
 export default function Profile() {
-  const { posts, renameAuthor } = usePosts()
+  const { posts, currentUserId, renameAuthor } = usePosts()
   const { profile, setProfile } = useProfile()
-  const { following } = useFollow()
   const { drafts, deleteDraft } = useDraft()
   const { logout } = useAuth()
   const navigate = useNavigate()
@@ -172,8 +171,34 @@ export default function Profile() {
     else setFollowTranslate(0)
   }
 
-  const followingUsers = following.map(n => ({ name: n, avatar: null, bio: '', linkTo: `/user/${n}` }))
-  const followerUsers = []
+  const [followerUsers, setFollowerUsers] = useState([])
+  const [followingUsers, setFollowingUsers] = useState([])
+
+  useEffect(() => {
+    if (!currentUserId) return
+    const mapProfile = (p) => ({
+      name: p.nickname || p.username,
+      username: p.username,
+      avatar: p.avatar_url || null,
+      bio: p.bio || '',
+    })
+    ;(async () => {
+      const { data: fwrRows } = await supabase.from('follows').select('follower_id').eq('following_id', currentUserId)
+      if (fwrRows?.length > 0) {
+        const { data: fps } = await supabase.from('profiles').select('username, nickname, avatar_url, bio').in('id', fwrRows.map(r => r.follower_id))
+        setFollowerUsers((fps || []).map(mapProfile))
+      } else {
+        setFollowerUsers([])
+      }
+      const { data: fwgRows } = await supabase.from('follows').select('following_id').eq('follower_id', currentUserId)
+      if (fwgRows?.length > 0) {
+        const { data: fps } = await supabase.from('profiles').select('username, nickname, avatar_url, bio').in('id', fwgRows.map(r => r.following_id))
+        setFollowingUsers((fps || []).map(mapProfile))
+      } else {
+        setFollowingUsers([])
+      }
+    })()
+  }, [currentUserId])
 
   const streak = calcStreak(posts)
 
@@ -320,7 +345,7 @@ export default function Profile() {
               </button>
               <div className="w-px h-4 bg-gray-100" />
               <button onClick={() => openFollowSheet('following')} className="flex flex-col items-center gap-0.5 active:opacity-60 transition-opacity">
-                <span className="text-sm font-bold text-gray-800">{following.length}</span>
+                <span className="text-sm font-bold text-gray-800">{followingUsers.length}</span>
                 <span className="text-gray-400" style={{ fontSize: '9px' }}>Following</span>
               </button>
             </div>
@@ -420,7 +445,7 @@ export default function Profile() {
                 (followSheet === 'followers' ? followerUsers : followingUsers).map((u) => (
                   <button
                     key={u.name}
-                    onClick={() => { closeFollowSheet(); navigate(`/user/${u.name}`) }}
+                    onClick={() => { closeFollowSheet(); navigate(`/user/${u.username}`) }}
                     className="w-full flex items-center gap-3 py-3 active:opacity-60 transition-opacity"
                   >
                     <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--avatar-bg)' }}>

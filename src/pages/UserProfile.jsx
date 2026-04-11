@@ -99,14 +99,43 @@ export default function UserProfile() {
   }))
 
   useEffect(() => {
-    supabase.from('profiles').select('username, nickname, bio, avatar_url').eq('username', name).single()
-      .then(({ data }) => {
-        if (data) setUser({ name: data.username, nickname: data.nickname, bio: data.bio || '', avatar: data.avatar_url || null, loaded: true })
-        else setUser(prev => ({ ...prev, loaded: true }))
+    supabase.from('profiles').select('id, username, nickname, bio, avatar_url').eq('username', name).single()
+      .then(async ({ data }) => {
+        if (!data) { setUser(prev => ({ ...prev, loaded: true })); return }
+        setUser({ name: data.username, nickname: data.nickname, bio: data.bio || '', avatar: data.avatar_url || null, loaded: true })
+
+        const uid = data.id
+        const mapProfile = (p) => ({
+          name: p.nickname || p.username,
+          avatar: p.avatar_url || null,
+          bio: p.bio || '',
+          linkTo: `/user/${p.username}`,
+        })
+
+        // 팔로워 목록
+        const { data: fwrRows } = await supabase.from('follows').select('follower_id').eq('following_id', uid)
+        if (fwrRows?.length > 0) {
+          const { data: fps } = await supabase.from('profiles').select('username, nickname, avatar_url, bio').in('id', fwrRows.map(r => r.follower_id))
+          setFollowerUsers((fps || []).map(mapProfile))
+        } else {
+          setFollowerUsers([])
+        }
+
+        // 팔로잉 목록
+        const { data: fwgRows } = await supabase.from('follows').select('following_id').eq('follower_id', uid)
+        if (fwgRows?.length > 0) {
+          const { data: fps } = await supabase.from('profiles').select('username, nickname, avatar_url, bio').in('id', fwgRows.map(r => r.following_id))
+          setFollowingUsers((fps || []).map(mapProfile))
+        } else {
+          setFollowingUsers([])
+        }
       })
   }, [name])
 
   const userPosts = useMemo(() => myPosts.filter((p) => p.authorUsername === name || p.author === name).slice(0, 15), [name, myPosts])
+
+  const [followerUsers, setFollowerUsers] = useState([])
+  const [followingUsers, setFollowingUsers] = useState([])
 
   const [activeTab, setActiveTab] = useState('drift')
   const [showList, setShowList] = useState(false)
@@ -437,10 +466,10 @@ export default function UserProfile() {
           bubbles={userPosts.length}
           log={userPosts.filter(p => p.type === 'log' || !p.type).length}
           pop={userPosts.filter(p => p.type === 'pop').length}
-          followers={followed ? 1 : 0}
-          following={0}
-          followerUsers={followed ? [{ name: 'me' }] : []}
-          followingUsers={[]}
+          followers={followerUsers.length}
+          following={followingUsers.length}
+          followerUsers={followerUsers}
+          followingUsers={followingUsers}
           profileUrl={`${window.location.origin}/user/${name}`}
         />
       )}

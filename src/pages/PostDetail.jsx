@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
 import { useProfile } from '../context/ProfileContext'
-import { useRebubble } from '../context/RebubbleContext'
 import { useBookmark } from '../context/BookmarkContext'
 import { supabase } from '../lib/supabase'
 
@@ -235,9 +234,8 @@ function CommentCard({ comment, onDelete, canDelete, onReply, onDeleteReply, pro
 }
 
 export default function PostDetail() {
-  const { posts, deletePost, addComment, deleteComment, addReply, deleteReply, toggleLike, isLiked, addRecentlyViewed, currentUserId } = usePosts()
+  const { posts, deletePost, addComment, deleteComment, addReply, deleteReply, toggleLike, toggleRebubble, addRecentlyViewed, currentUserId } = usePosts()
   const { profile } = useProfile()
-  const { toggle: toggleRebubble, isRebubbled } = useRebubble()
   const { toggleBookmark, isBookmarked } = useBookmark()
   const { id } = useParams()
   const navigate = useNavigate()
@@ -296,13 +294,44 @@ export default function PostDetail() {
   const [fetchedPost, setFetchedPost] = useState(null)
   const [notFound, setNotFound] = useState(false)
 
-  const post = posts.find((p) => String(p.id) === String(id)) ?? fetchedPost
+  const postFromCtx = posts.find((p) => String(p.id) === String(id))
+  const post = postFromCtx ?? fetchedPost
+
+  // fetchedPost일 때 좋아요/리버블 상태를 로컬에서도 업데이트
+  const handleToggleLike = async () => {
+    if (!post || !currentUserId) return
+    const newLiked = await toggleLike(post.id, post.likes)
+    if (!postFromCtx && fetchedPost) {
+      setFetchedPost(prev => ({
+        ...prev,
+        likes: newLiked
+          ? [...(prev.likes || []), currentUserId]
+          : (prev.likes || []).filter(id => id !== currentUserId),
+      }))
+    }
+  }
+
+  const handleToggleRebubble = async () => {
+    if (!post || !currentUserId) return
+    const newRebubbled = await toggleRebubble(post.id, post.rebubbles)
+    if (!postFromCtx && fetchedPost) {
+      setFetchedPost(prev => ({
+        ...prev,
+        rebubbles: newRebubbled
+          ? [...(prev.rebubbles || []), currentUserId]
+          : (prev.rebubbles || []).filter(id => id !== currentUserId),
+      }))
+    }
+  }
+
+  const postLiked = currentUserId && post ? (post.likes || []).includes(currentUserId) : false
+  const postRebubbled = currentUserId && post ? (post.rebubbles || []).includes(currentUserId) : false
 
   useEffect(() => {
     if (post) return
     supabase
       .from('posts')
-      .select('*, profiles(username, nickname, avatar_url), likes(user_id), comments(id, author_id, content, created_at, parent_id, profiles(username, nickname))')
+      .select('*, profiles(username, nickname, avatar_url), likes(user_id), rebubbles(user_id), comments(id, author_id, content, created_at, parent_id, profiles(username, nickname))')
       .eq('id', id)
       .single()
       .then(({ data }) => {
@@ -321,7 +350,8 @@ export default function PostDetail() {
           author: data.profiles?.nickname || data.profiles?.username || '',
           authorUsername: data.profiles?.username || '', authorId: data.author_id,
           authorAvatar: data.profiles?.avatar_url || null,
-          likes: (data.likes || []).map(l => l.user_id), comments: roots,
+          likes: (data.likes || []).map(l => l.user_id),
+          rebubbles: (data.rebubbles || []).map(r => r.user_id), comments: roots,
           readTime: Math.max(1, Math.ceil((data.content || '').length / 500)),
         })
       })
@@ -361,9 +391,10 @@ export default function PostDetail() {
   const _d = new Date(post.date)
   const formattedDate = `${_d.getFullYear()} · ${String(_d.getMonth() + 1).padStart(2, '0')} · ${String(_d.getDate()).padStart(2, '0')} · ${String(_d.getHours()).padStart(2, '0')}:${String(_d.getMinutes()).padStart(2, '0')}`
 
-  const currentIndex = isSample ? -1 : posts.findIndex((p) => p.id === post.id)
-  const prevPost = currentIndex >= 0 ? (posts[currentIndex + 1] ?? null) : null
-  const nextPost = currentIndex > 0 ? (posts[currentIndex - 1] ?? null) : null
+  const myPosts = posts.filter((p) => p.authorId === currentUserId)
+  const currentIndex = isSample ? -1 : myPosts.findIndex((p) => p.id === post?.id)
+  const prevPost = currentIndex >= 0 ? (myPosts[currentIndex + 1] ?? null) : null
+  const nextPost = currentIndex > 0 ? (myPosts[currentIndex - 1] ?? null) : null
 
   return (
     <div>
@@ -710,11 +741,11 @@ export default function PostDetail() {
       >
         {/* 좋아요 */}
         <button
-          onClick={() => post && toggleLike(post.id)}
+          onClick={handleToggleLike}
           className="flex items-center gap-2 transition-all active:scale-95"
-          style={{ color: post && isLiked(post.id) ? '#ef4444' : '#9ca3af' }}
+          style={{ color: postLiked ? '#ef4444' : '#9ca3af' }}
         >
-          <svg viewBox="0 0 24 24" fill={post && isLiked(post.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" className="w-5 h-5">
+          <svg viewBox="0 0 24 24" fill={postLiked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" className="w-5 h-5">
             <path d="M12 21C12 21 3 14.5 3 8.5a4.5 4.5 0 0 1 9-0.5 4.5 4.5 0 0 1 9 0.5C21 14.5 12 21 12 21z" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span className="text-sm font-medium">{post ? (post.likes?.length || 0) : 0}</span>
@@ -725,9 +756,9 @@ export default function PostDetail() {
 
         {/* 리버블 */}
         <button
-          onClick={() => post && toggleRebubble(post.id)}
+          onClick={handleToggleRebubble}
           className="flex items-center gap-2 transition-all active:scale-95"
-          style={{ color: post && isRebubbled(post.id) ? '#3b82f6' : '#9ca3af' }}
+          style={{ color: postRebubbled ? '#3b82f6' : '#9ca3af' }}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5">
             <circle cx="8" cy="15" r="5" strokeWidth={1.3} />
@@ -737,7 +768,7 @@ export default function PostDetail() {
             <circle cx="19.5" cy="17.5" r="1.8" strokeWidth={1.1} />
             <ellipse cx="18.8" cy="16.8" rx="0.55" ry="0.32" fill="currentColor" opacity={0.25} transform="rotate(-30 18.8 16.8)" />
           </svg>
-          <span className="text-sm font-medium">{post && isRebubbled(post.id) ? '1' : '0'}</span>
+          <span className="text-sm font-medium">{post ? (post.rebubbles?.length || 0) : 0}</span>
         </button>
 
         {/* 구분 */}

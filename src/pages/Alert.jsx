@@ -1,11 +1,10 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useNotification } from '../context/NotificationContext'
-import { useProfile } from '../context/ProfileContext'
 import { useTheme, THEMES } from '../context/ThemeContext'
 
-function timeAgo(date) {
-  const diff = Date.now() - date
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime()
   const m = Math.floor(diff / 60000)
   if (m < 1) return '방금'
   if (m < 60) return `${m}분 전`
@@ -23,7 +22,10 @@ const TYPE_CONFIG = {
         <path d="M3 18c0-3.5 3.1-6 7-6s7 2.5 7 6" strokeLinecap="round" />
       </svg>
     ),
-    message: (n, onNameClick) => <><button className="font-semibold" onClick={onNameClick}>{n.from}</button>님이 회원님을 팔로우했습니다.</>,
+    message: (n, onNameClick) => {
+      const actorName = n.actor?.nickname || n.actor?.username || '누군가'
+      return <><button className="font-semibold" onClick={onNameClick}>{actorName}</button>님이 회원님을 팔로우했습니다.</>
+    },
   },
   like: {
     icon: (
@@ -31,7 +33,10 @@ const TYPE_CONFIG = {
         <path d="M12 21C12 21 3 14.5 3 8.5a4.5 4.5 0 0 1 9-0.5 4.5 4.5 0 0 1 9 0.5C21 14.5 12 21 12 21z" />
       </svg>
     ),
-    message: (n, onNameClick) => <><button className="font-semibold" onClick={onNameClick}>{n.from}</button>님이 <span className="font-semibold">'{n.postTitle}'</span>에 좋아요를 눌렀습니다.</>,
+    message: (n, onNameClick) => {
+      const actorName = n.actor?.nickname || n.actor?.username || '누군가'
+      return <><button className="font-semibold" onClick={onNameClick}>{actorName}</button>님이 <span className="font-semibold">'{n.postTitle}'</span>에 좋아요를 눌렀습니다.</>
+    },
   },
   comment: {
     icon: (
@@ -39,17 +44,10 @@ const TYPE_CONFIG = {
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    message: (n, onNameClick) => <><button className="font-semibold" onClick={onNameClick}>{n.from}</button>님이 <span className="font-semibold">'{n.postTitle}'</span>에 댓글을 남겼습니다.{n.commentText && <span className="block text-xs text-gray-400 mt-0.5">"{n.commentText}"</span>}</>,
-  },
-  rebubble: {
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-3.5 h-3.5">
-        <circle cx="8" cy="15" r="5" strokeWidth={1.6} />
-        <circle cx="18" cy="7" r="3" strokeWidth={1.5} />
-        <circle cx="19.5" cy="17.5" r="1.8" strokeWidth={1.4} />
-      </svg>
-    ),
-    message: (n, onNameClick) => <><button className="font-semibold" onClick={onNameClick}>{n.from}</button>님이 <span className="font-semibold">'{n.postTitle}'</span>을 Rebubble 했습니다.</>,
+    message: (n, onNameClick) => {
+      const actorName = n.actor?.nickname || n.actor?.username || '누군가'
+      return <><button className="font-semibold" onClick={onNameClick}>{actorName}</button>님이 <span className="font-semibold">'{n.postTitle}'</span>에 댓글을 남겼습니다.{n.commentText && <span className="block text-xs text-gray-400 mt-0.5">"{n.commentText}"</span>}</>
+    },
   },
 }
 
@@ -111,27 +109,21 @@ function SwipeableNotification({ children, onDelete }) {
 export default function Alert() {
   const navigate = useNavigate()
   const { notifications, unreadCount, markRead, markAllRead, deleteNotification } = useNotification()
-  const { profile } = useProfile()
   const { themeId } = useTheme()
   const theme = THEMES.find((t) => t.id === themeId) || THEMES[0]
   const unreadBg = theme.unread
   const dotColor = theme.dot
 
-  function getUser(name) {
-    if (name === profile.name) return { name: profile.name, avatar: profile.avatar }
-    return { name, avatar: null }
-  }
-
   function handleProfileClick(e, n) {
     e.stopPropagation()
     markRead(n.id)
-    navigate(`/user/${n.from}`)
+    if (n.actor?.username) navigate(`/user/${n.actor.username}`)
   }
 
   function handleContentClick(n) {
     markRead(n.id)
     if (n.type === 'follow') {
-      navigate(`/user/${n.from}`)
+      if (n.actor?.username) navigate(`/user/${n.actor.username}`)
     } else if (n.type === 'comment' && n.postId) {
       navigate(`/post/${n.postId}`, { state: { openComments: true } })
     } else if (n.postId) {
@@ -164,10 +156,11 @@ export default function Alert() {
           </div>
         ) : (
           <div>
-            {[...notifications].sort((a, b) => b.date - a.date).map((n) => {
+            {notifications.map((n) => {
               const config = TYPE_CONFIG[n.type]
               if (!config) return null
-              const user = getUser(n.from)
+              const actorName = n.actor?.nickname || n.actor?.username || '?'
+              const actorAvatar = n.actor?.avatar_url || null
               return (
                 <SwipeableNotification key={n.id} onDelete={() => deleteNotification(n.id)}>
                   <div
@@ -179,9 +172,9 @@ export default function Alert() {
                       className="relative flex-shrink-0 mt-0.5 hover:opacity-80 transition-opacity"
                     >
                       <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center" style={{ background: 'var(--avatar-bg)' }}>
-                        {user.avatar
-                          ? <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                          : <span className="text-sm font-bold text-gray-500">{user.name[0]?.toUpperCase()}</span>}
+                        {actorAvatar
+                          ? <img src={actorAvatar} alt={actorName} className="w-full h-full object-cover" />
+                          : <span className="text-sm font-bold text-gray-500">{actorName[0]?.toUpperCase()}</span>}
                       </div>
                       <div
                         className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center"
@@ -197,7 +190,7 @@ export default function Alert() {
                       <p className="text-sm text-gray-700 leading-snug">
                         {config.message(n, (e) => { e.stopPropagation(); handleProfileClick(e, n) })}
                       </p>
-                      <p className="text-xs text-gray-400 mt-1">{timeAgo(n.date)}</p>
+                      <p className="text-xs text-gray-400 mt-1">{timeAgo(n.createdAt)}</p>
                     </div>
                     {!n.read && (
                       <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: dotColor }} />
