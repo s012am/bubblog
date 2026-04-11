@@ -109,7 +109,7 @@ export default function App() {
             <NotificationProvider>
               <DraftProvider>
                 <BookmarkProvider>
-                  <AppInner />
+                  {!splash && <AppInner />}
                 </BookmarkProvider>
               </DraftProvider>
             </NotificationProvider>
