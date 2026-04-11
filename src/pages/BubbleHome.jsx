@@ -66,9 +66,10 @@ export default function BubbleHome() {
   const { posts, deletePost, currentUserId } = usePosts()
   const { profile } = useProfile()
   const { rebubbledIds, toggle: toggleRebubble } = useRebubble()
-  const { isFollowing, follow, unfollow } = useFollow()
-  const popCount = posts.filter((p) => p.type === 'pop').length
-  const logCount = posts.filter((p) => p.type === 'log' || !p.type).length
+  const { followVersion } = useFollow()
+  const myPosts = posts.filter((p) => p.authorId === currentUserId)
+  const popCount = myPosts.filter((p) => p.type === 'pop').length
+  const logCount = myPosts.filter((p) => p.type === 'log' || !p.type).length
   const [infoOpen, setInfoOpen] = useState(false)
   const [followerUsers, setFollowerUsers] = useState([])
   const [followingUsers, setFollowingUsers] = useState([])
@@ -99,7 +100,7 @@ export default function BubbleHome() {
         setFollowingUsers([])
       }
     })()
-  }, [currentUserId])
+  }, [currentUserId, followVersion])
 
   const [activeTab, setActiveTab] = useState('drift')
   const [tick, setTick] = useState(0)

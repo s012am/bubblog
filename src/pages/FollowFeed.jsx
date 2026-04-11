@@ -116,7 +116,7 @@ export default function FollowFeed() {
 
   useEffect(() => {
     if (following.length === 0) { setFollowedProfiles({}); return }
-    supabase.from('profiles').select('username, nickname, avatar_url')
+    supabase.from('profiles').select('id, username, nickname, avatar_url')
       .in('username', following)
       .then(({ data }) => {
         if (!data) return
@@ -127,19 +127,25 @@ export default function FollowFeed() {
   }, [following])
 
   const feedPosts = useMemo(() => {
+    // Build userId → profile map for rebubble attribution
+    const followedProfilesByUid = Object.fromEntries(
+      Object.values(followedProfiles).filter(p => p.id).map(p => [p.id, p])
+    )
     const seen = new Set()
     const result = []
     for (const p of posts) {
       if (seen.has(p.id)) continue
       const byFollowed = following.includes(p.authorUsername)
-      const rebubbledByFollowed = (p.rebubbledBy || []).some((u) => following.includes(u))
+      const rebubbledFollower = (p.rebubbles || []).find(uid => followedProfilesByUid[uid])
+      const rebubbledByFollowed = !!rebubbledFollower
       if (byFollowed || rebubbledByFollowed) {
         seen.add(p.id)
-        result.push({ ...p, _rebubbledBy: rebubbledByFollowed && !byFollowed ? (p.rebubbledBy || []).find((u) => following.includes(u)) : null })
+        const rebubbler = rebubbledByFollowed && !byFollowed ? followedProfilesByUid[rebubbledFollower] : null
+        result.push({ ...p, _rebubbledBy: rebubbler ? (rebubbler.nickname || rebubbler.username) : null })
       }
     }
     return result.slice(0, 15)
-  }, [posts, following])
+  }, [posts, following, followedProfiles])
 
   const reset = useCallback(() => {
     const el = containerRef.current

@@ -6,6 +6,7 @@ const FollowContext = createContext(null)
 export function FollowProvider({ children }) {
   const [following, setFollowing] = useState([]) // usernames
   const [currentUserId, setCurrentUserId] = useState(null)
+  const [followVersion, setFollowVersion] = useState(0)
 
   const fetchFollowing = useCallback(async (userId) => {
     const { data: rows } = await supabase
@@ -45,6 +46,7 @@ export function FollowProvider({ children }) {
 
     await supabase.from('follows').insert({ follower_id: currentUserId, following_id: target.id })
     setFollowing(prev => prev.includes(username) ? prev : [...prev, username])
+    setFollowVersion(v => v + 1)
   }
 
   const unfollow = async (username) => {
@@ -57,12 +59,13 @@ export function FollowProvider({ children }) {
       .eq('follower_id', currentUserId)
       .eq('following_id', target.id)
     setFollowing(prev => prev.filter(n => n !== username))
+    setFollowVersion(v => v + 1)
   }
 
   const isFollowing = (username) => following.includes(username)
 
   return (
-    <FollowContext.Provider value={{ following, follow, unfollow, isFollowing }}>
+    <FollowContext.Provider value={{ following, follow, unfollow, isFollowing, followVersion }}>
       {children}
     </FollowContext.Provider>
   )

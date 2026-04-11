@@ -1,41 +1,63 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
 
 const DraftContext = createContext(null)
 export const useDraft = () => useContext(DraftContext)
 
-const STORAGE_KEY = 'bubblog_drafts'
-
-function load() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) return JSON.parse(saved)
-  } catch {}
-  return []
-}
-
-function save(list) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)) } catch {}
-}
-
 export function DraftProvider({ children }) {
-  const [drafts, setDrafts] = useState(load)
+  const [drafts, setDrafts] = useState([])
+  const [userId, setUserId] = useState(null)
 
-  function saveDraft(draft) {
-    // draft: { id, type, title, content, tags, savedAt }
-    setDrafts((prev) => {
-      const filtered = prev.filter((d) => d.id !== draft.id)
-      const next = [draft, ...filtered]
-      save(next)
-      return next
+  // Get current user
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setUserId(session.user.id)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUserId(session?.user?.id ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // Fetch drafts when userId changes
+  const fetchDrafts = useCallback(async (uid) => {
+    if (!uid) { setDrafts([]); return }
+    const { data } = await supabase
+      .from('drafts')
+      .select('*')
+      .eq('user_id', uid)
+      .order('saved_at', { ascending: false })
+    setDrafts(data || [])
+  }, [])
+
+  useEffect(() => {
+    fetchDrafts(userId)
+  }, [userId, fetchDrafts])
+
+  const saveDraft = async (draft) => {
+    // draft: { id, type, title, content, tags }
+    if (!userId) return
+    const row = {
+      id: draft.id,
+      user_id: userId,
+      type: draft.type || 'log',
+      title: draft.title || '',
+      content: draft.content || '',
+      tags: draft.tags || [],
+      saved_at: new Date().toISOString(),
+    }
+    const { data, error } = await supabase.from('drafts').upsert(row).select().single()
+    if (error) { console.error('saveDraft error', error); return }
+    setDrafts(prev => {
+      const filtered = prev.filter(d => d.id !== draft.id)
+      return [data, ...filtered]
     })
   }
 
-  function deleteDraft(id) {
-    setDrafts((prev) => {
-      const next = prev.filter((d) => d.id !== id)
-      save(next)
-      return next
-    })
+  const deleteDraft = async (id) => {
+    if (!userId) return
+    await supabase.from('drafts').delete().eq('id', id).eq('user_id', userId)
+    setDrafts(prev => prev.filter(d => d.id !== id))
   }
 
   return (

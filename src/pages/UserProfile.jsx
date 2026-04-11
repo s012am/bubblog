@@ -87,7 +87,7 @@ export default function UserProfile() {
   const { name } = useParams()
   const navigate = useNavigate()
   const { posts: myPosts } = usePosts()
-  const { isFollowing, follow, unfollow } = useFollow()
+  const { isFollowing, follow, unfollow, followVersion } = useFollow()
 
   const cachedPost = useMemo(() => myPosts.find(p => p.authorUsername === name), [myPosts, name])
   const [user, setUser] = useState(() => ({
@@ -130,9 +130,9 @@ export default function UserProfile() {
           setFollowingUsers([])
         }
       })
-  }, [name])
+  }, [name, followVersion])
 
-  const userPosts = useMemo(() => myPosts.filter((p) => p.authorUsername === name || p.author === name).slice(0, 15), [name, myPosts])
+  const userPosts = useMemo(() => myPosts.filter((p) => p.authorUsername === name).slice(0, 15), [name, myPosts])
 
   const [followerUsers, setFollowerUsers] = useState([])
   const [followingUsers, setFollowingUsers] = useState([])

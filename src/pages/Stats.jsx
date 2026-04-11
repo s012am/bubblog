@@ -3,18 +3,20 @@ import { usePosts } from '../context/PostsContext'
 
 export default function Stats() {
   const navigate = useNavigate()
-  const { posts } = usePosts()
+  const { posts, currentUserId } = usePosts()
 
-  const logCount = posts.filter((p) => p.type === 'log' || !p.type).length
-  const popCount = posts.filter((p) => p.type === 'pop').length
+  const myPosts = posts.filter(p => p.authorId === currentUserId)
 
-  const totalRebubbles = posts.reduce((s, p) => s + (p.rebubbles?.length ?? 0), 0)
+  const logCount = myPosts.filter((p) => p.type === 'log' || !p.type).length
+  const popCount = myPosts.filter((p) => p.type === 'pop').length
 
-  const totalViews = posts.reduce((s, p) => s + (p.viewCount || 0), 0)
+  const totalRebubbles = myPosts.reduce((s, p) => s + (p.rebubbles?.length ?? 0), 0)
 
-  const mostRebubbled = posts.length === 0 ? null : posts.reduce((best, p) =>
+  const totalViews = myPosts.reduce((s, p) => s + (p.viewCount || 0), 0)
+
+  const mostRebubbled = myPosts.length === 0 ? null : myPosts.reduce((best, p) =>
     (p.rebubbles?.length ?? 0) > (best.rebubbles?.length ?? 0) ? p : best
-  , posts[0])
+  , myPosts[0])
 
   const mostRebubbledCount = mostRebubbled ? (mostRebubbled.rebubbles?.length ?? 0) : 0
 
@@ -44,7 +46,7 @@ export default function Stats() {
 
       <div className="max-w-lg mx-auto px-4 py-6 flex flex-col gap-5">
 
-        {posts.length === 0 ? (
+        {myPosts.length === 0 ? (
           <p className="text-sm text-gray-300 text-center py-20">아직 작성한 글이 없습니다.</p>
         ) : (
           <>
@@ -55,7 +57,7 @@ export default function Stats() {
             >
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">총 게시글</p>
               <div className="flex items-end gap-2">
-                <span className="text-5xl font-extrabold text-gray-800">{posts.length}</span>
+                <span className="text-5xl font-extrabold text-gray-800">{myPosts.length}</span>
                 <span className="text-sm text-gray-400 mb-1.5">개</span>
               </div>
             </div>

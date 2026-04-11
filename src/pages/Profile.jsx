@@ -4,6 +4,7 @@ import { usePosts } from '../context/PostsContext'
 import { useProfile } from '../context/ProfileContext'
 import { supabase } from '../lib/supabase'
 import { useDraft } from '../context/DraftContext'
+import { useFollow } from '../context/FollowContext'
 import { useTheme, THEMES } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 
@@ -132,8 +133,10 @@ function StreakGrid({ posts }) {
 
 export default function Profile() {
   const { posts, currentUserId, renameAuthor } = usePosts()
+  const myPosts = posts.filter(p => p.authorId === currentUserId)
   const { profile, setProfile } = useProfile()
   const { drafts, deleteDraft } = useDraft()
+  const { followVersion } = useFollow()
   const { logout } = useAuth()
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
@@ -198,9 +201,9 @@ export default function Profile() {
         setFollowingUsers([])
       }
     })()
-  }, [currentUserId])
+  }, [currentUserId, followVersion])
 
-  const streak = calcStreak(posts)
+  const streak = calcStreak(myPosts)
 
   const handleSave = () => {
     if (draft.name !== profile.name) renameAuthor(profile.name, draft.name)
@@ -335,7 +338,7 @@ export default function Profile() {
           <div className="flex-1 flex flex-col gap-3 min-w-0 pt-3">
             <div className="flex items-center gap-3">
               <div className="flex flex-col items-center gap-0.5">
-                <span className="text-sm font-bold text-gray-800">{posts.length}</span>
+                <span className="text-sm font-bold text-gray-800">{myPosts.length}</span>
                 <span className="text-gray-400" style={{ fontSize: '9px' }}>Bubbles</span>
               </div>
               <div className="w-px h-4 bg-gray-100" />
@@ -378,7 +381,7 @@ export default function Profile() {
               <span className="text-[12px] text-gray-400 font-medium">days in a row</span>
             </div>
           </div>
-          <StreakGrid posts={posts} />
+          <StreakGrid posts={myPosts} />
         </div>
 
       </div>
