@@ -44,13 +44,14 @@ export default function SplashScreen({ onDone }) {
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-2 -translate-y-11"
+      className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-2"
       style={{
         background: bg,
         opacity: out ? 0 : 1,
         transition: out ? 'opacity 0.45s ease' : 'none',
       }}
     >
+      <div className="flex flex-col items-center gap-2 -translate-y-11">
       <svg width="120" height="120" viewBox="0 0 24 24" fill="none" overflow="visible">
         {BUBBLES.map(({ id, delay, circle, shine }) => (
           <g key={id} style={{
@@ -83,6 +84,7 @@ export default function SplashScreen({ onDone }) {
       }}>
         Bubblog
       </span>
+      </div>
 
       <style>{`
         @keyframes bubble-pop {
