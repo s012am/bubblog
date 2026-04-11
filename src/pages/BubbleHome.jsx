@@ -371,7 +371,7 @@ export default function BubbleHome() {
   }, [])
 
   return (
-    <div className="flex flex-col min-h-dvh">
+    <div className="flex flex-col" style={{ height: 'calc(100dvh - 64px)' }}>
       {/* 헤더 */}
       <div
         className="px-6 pt-4 pb-0"
