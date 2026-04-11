@@ -323,7 +323,7 @@ export default function UserProfile() {
 
           {/* 이름 + Follow + Info */}
           <div className="flex items-center gap-1.5 w-full mt-1">
-            <h1 className="font-extrabold text-gray-800 tracking-tight flex-1" style={{ fontSize: '18px' }}>{name}</h1>
+            <h1 className="font-extrabold text-gray-800 tracking-tight flex-1" style={{ fontSize: '18px' }}>{user.nickname || name}</h1>
             <button
               onClick={() => followed ? unfollow(name) : follow(name)}
               className="px-4 py-1 rounded-full text-xs font-semibold transition-all"
@@ -423,7 +423,7 @@ export default function UserProfile() {
         <InfoSheet
           onClose={() => setInfoOpen(false)}
           avatar={user.avatar}
-          name={name}
+          name={user.nickname || name}
           username={name}
           bio={user.bio}
           bubbles={userPosts.length}
