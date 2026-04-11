@@ -98,11 +98,15 @@ export default function UserProfile() {
     loaded: false,
   }))
 
+  const [profileId, setProfileId] = useState(null)
+  const [rebubbledPosts, setRebubbledPosts] = useState([])
+
   useEffect(() => {
     supabase.from('profiles').select('id, username, nickname, bio, avatar_url').eq('username', name).single()
       .then(async ({ data }) => {
         if (!data) { setUser(prev => ({ ...prev, loaded: true })); return }
         setUser({ name: data.username, nickname: data.nickname, bio: data.bio || '', avatar: data.avatar_url || null, loaded: true })
+        setProfileId(data.id)
 
         const uid = data.id
         const mapProfile = (p) => ({
@@ -134,6 +138,16 @@ export default function UserProfile() {
 
   const userPosts = useMemo(() => myPosts.filter((p) => p.authorUsername === name).slice(0, 15), [name, myPosts])
 
+  useEffect(() => {
+    if (!profileId) return
+    supabase.from('rebubbles').select('post_id').eq('user_id', profileId)
+      .then(({ data }) => {
+        if (!data || data.length === 0) { setRebubbledPosts([]); return }
+        const ids = data.map(r => r.post_id)
+        setRebubbledPosts(myPosts.filter(p => ids.includes(p.id)))
+      })
+  }, [profileId, myPosts])
+
   const [followerUsers, setFollowerUsers] = useState([])
   const [followingUsers, setFollowingUsers] = useState([])
 
@@ -153,16 +167,18 @@ export default function UserProfile() {
   const dragRef = useRef(null)
   const didDragRef = useRef(false)
 
+  const activePosts = activeTab === 'rebubbled' ? rebubbledPosts : userPosts
+
   const reset = useCallback(() => {
     const el = containerRef.current
     if (!el) return
     const w = el.clientWidth, h = el.clientHeight
     sizeRef.current = { w, h }
-    bubblesRef.current = initBubbles(w, h, userPosts)
-  }, [userPosts])
+    bubblesRef.current = initBubbles(w, h, activePosts)
+  }, [activePosts])
 
   useEffect(() => {
-    if (activeTab !== 'drift' || showList) return
+    if (showList) return
     reset()
     const onResize = () => reset()
     window.addEventListener('resize', onResize)
@@ -227,7 +243,7 @@ export default function UserProfile() {
     }
     rafRef.current = requestAnimationFrame(loop)
     return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener('resize', onResize) }
-  }, [reset, activeTab, showList])
+  }, [reset, showList])
 
   const onMouseDown = useCallback((e, bubbleId) => {
     e.preventDefault()
@@ -437,12 +453,12 @@ export default function UserProfile() {
               <p className="text-sm text-gray-300">아직 글이 없습니다.</p>
             </div>
           )}
-          {activeTab === 'rebubbled' && (
+          {activeTab === 'rebubbled' && rebubbledPosts.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center">
               <p className="text-sm text-gray-300 text-center">아직 Rebubble한 글이 없습니다.</p>
             </div>
           )}
-          {activeTab === 'drift' && bubblesRef.current.map((b) => (
+          {bubblesRef.current.map((b) => (
             <BubbleNode
               key={b.id}
               b={b}
