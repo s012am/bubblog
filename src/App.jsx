@@ -24,6 +24,7 @@ import Settings from './pages/Settings'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
 import OpenSource from './pages/OpenSource'
+import AuthCallback from './pages/AuthCallback'
 import { PostsProvider } from './context/PostsContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ProfileProvider } from './context/ProfileContext'
@@ -78,6 +79,7 @@ function AppInner() {
           <Route path="/stats" element={<PrivateRoute><Stats /></PrivateRoute>} />
           <Route path="/activity" element={<PrivateRoute><Activity /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/opensource" element={<OpenSource />} />

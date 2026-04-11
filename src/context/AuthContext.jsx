@@ -26,6 +26,7 @@ export function AuthProvider({ children }) {
       password,
       options: {
         data: { username: id, nickname },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     })
 
