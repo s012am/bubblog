@@ -1,17 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- 흰색 배경 -->
   <rect width="512" height="512" rx="112" fill="white"/>
-
-  <!-- 24x24 → 512x512 scale: x21.33 -->
-  <!-- 큰 버블: cx=8 cy=15 r=5 → cx=170.7 cy=320 r=106.7 -->
-  <circle cx="170.7" cy="320" r="106.7" fill="none" stroke="#1f2937" stroke-width="17"/>
-  <ellipse cx="96" cy="241.7" rx="34.1" ry="19.2" fill="#1f2937" opacity="0.18" transform="rotate(-30 96 241.7)"/>
-
-  <!-- 중간 버블: cx=18 cy=7 r=3 → cx=384 cy=149.3 r=64 -->
-  <circle cx="384" cy="149.3" r="64" fill="none" stroke="#1f2937" stroke-width="15.4"/>
-  <ellipse cx="320" cy="85.3" rx="19.2" ry="10.7" fill="#1f2937" opacity="0.18" transform="rotate(-30 320 85.3)"/>
-
-  <!-- 작은 버블: cx=19.5 cy=17.5 r=1.8 → cx=416 cy=373.3 r=38.4 -->
-  <circle cx="416" cy="373.3" r="38.4" fill="none" stroke="#1f2937" stroke-width="14"/>
-  <ellipse cx="384" cy="341.3" rx="11.7" ry="6.8" fill="#1f2937" opacity="0.18" transform="rotate(-30 384 341.3)"/>
+  <!-- 버블 그룹을 중앙으로 이동 + 크기 축소 (scale 0.65, 중앙 정렬) -->
+  <g transform="translate(256,256) scale(0.65) translate(-256,-256)">
+    <circle cx="170.7" cy="320" r="106.7" fill="none" stroke="#1f2937" stroke-width="17"/>
+    <ellipse cx="96" cy="241.7" rx="34.1" ry="19.2" fill="#1f2937" opacity="0.18" transform="rotate(-30 96 241.7)"/>
+    <circle cx="384" cy="149.3" r="64" fill="none" stroke="#1f2937" stroke-width="15.4"/>
+    <ellipse cx="320" cy="85.3" rx="19.2" ry="10.7" fill="#1f2937" opacity="0.18" transform="rotate(-30 320 85.3)"/>
+    <circle cx="416" cy="373.3" r="38.4" fill="none" stroke="#1f2937" stroke-width="14"/>
+    <ellipse cx="384" cy="341.3" rx="11.7" ry="6.8" fill="#1f2937" opacity="0.18" transform="rotate(-30 384 341.3)"/>
+  </g>
 </svg>
