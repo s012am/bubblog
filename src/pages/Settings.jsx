@@ -133,7 +133,7 @@ export default function Settings() {
             className="w-full flex items-center px-5 py-3.5 text-left hover:bg-red-50 transition-colors"
             onClick={() => setDeleteConfirm(true)}
           >
-            <span className="text-sm text-red-300">계정 탈퇴</span>
+            <span className="text-sm text-red-400">계정 탈퇴</span>
           </button>
         </div>
 
