@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+.env
+.env.local
+
+# Capacitor native build artifacts
+ios/App/App/public
+ios/App/DerivedData
+android/app/src/main/assets/public
+android/.gradle
+android/build
+android/app/build
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

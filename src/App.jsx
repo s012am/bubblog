@@ -1,5 +1,5 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
+import { useState } from 'react'
 import SplashScreen from './components/SplashScreen'
 import Onboarding from './components/Onboarding'
 import Navbar from './components/Navbar'
@@ -27,95 +27,63 @@ import OpenSource from './pages/OpenSource'
 import { PostsProvider } from './context/PostsContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ProfileProvider } from './context/ProfileContext'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import { RebubbleProvider } from './context/RebubbleContext'
 import { FollowProvider } from './context/FollowContext'
-import { NotificationProvider, useNotification } from './context/NotificationContext'
+import { NotificationProvider } from './context/NotificationContext'
 import { DraftProvider } from './context/DraftContext'
 import { BookmarkProvider } from './context/BookmarkContext'
-import { usePosts } from './context/PostsContext'
 
-const SAMPLE_USERS = ['minjun', 'soyeon', 'haewon']
 
-function NotificationBridge() {
-  const { posts } = usePosts()
-  const { addNotification } = useNotification()
-  const prevLen = useRef(posts.length)
-  const timers = useRef([])
+function PrivateRoute({ children }) {
+  const { isLoggedIn, loading } = useAuth()
+  if (loading) return null
+  return isLoggedIn ? children : <Navigate to="/login" replace />
+}
 
-  useEffect(() => {
-    if (posts.length <= prevLen.current) { prevLen.current = posts.length; return }
-    const post = posts[0]
-    prevLen.current = posts.length
-
-    const pick = (exclude) => {
-      const pool = SAMPLE_USERS.filter((u) => u !== exclude)
-      return pool[Math.floor(Math.random() * pool.length)]
-    }
-    const u1 = SAMPLE_USERS[Math.floor(Math.random() * SAMPLE_USERS.length)]
-    const u2 = pick(u1)
-
-    const t1 = setTimeout(() => addNotification({
-      id: `n_${Date.now()}_like`,
-      type: 'like',
-      from: u1,
-      postId: post.id,
-      postTitle: post.title,
-      date: Date.now(),
-      read: false,
-    }), 4000)
-
-    const t2 = setTimeout(() => addNotification({
-      id: `n_${Date.now()}_rebubble`,
-      type: 'rebubble',
-      from: u2,
-      postId: post.id,
-      postTitle: post.title,
-      date: Date.now(),
-      read: false,
-    }), 9000)
-
-    timers.current.push(t1, t2)
-    return () => { timers.current.forEach(clearTimeout); timers.current = [] }
-  }, [posts.length])
-
-  return null
+function PublicRoute({ children }) {
+  const { isLoggedIn, loading } = useAuth()
+  if (loading) return null
+  return isLoggedIn ? <Navigate to="/" replace /> : children
 }
 
 function AppInner() {
   const { pathname } = useLocation()
+  const { isLoggedIn, loading } = useAuth()
   const isPost = pathname.startsWith('/post/')
   const isWrite = pathname.startsWith('/write/')
+
+  if (loading) return null
 
   return (
     <div className={`min-h-dvh ${isPost || isWrite ? 'pb-2' : 'pb-16'}`}>
       <PullToRefresh />
       <Navbar />
-      <NotificationBridge />
       <main>
         <Routes>
-          <Route path="/" element={<BubbleHome />} />
-          <Route path="/list" element={<Home />} />
-          <Route path="/post/:id" element={<PostDetail />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/write/:type" element={<Write />} />
-          <Route path="/write/edit/:id" element={<Write />} />
-          <Route path="/home" element={<FollowFeed />} />
-          <Route path="/user/:name" element={<UserProfile />} />
-          <Route path="/explore" element={<Explore />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/notifications" element={<Alert />} />
-          <Route path="/tag/:tag" element={<TagPage />} />
-          <Route path="/bookmarks" element={<Bookmarks />} />
-          <Route path="/stats" element={<Stats />} />
-          <Route path="/activity" element={<Activity />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+          <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+          <Route path="/" element={<PrivateRoute><BubbleHome /></PrivateRoute>} />
+          <Route path="/list" element={<PrivateRoute><Home /></PrivateRoute>} />
+          <Route path="/post/:id" element={<PrivateRoute><PostDetail /></PrivateRoute>} />
+          <Route path="/write/:type" element={<PrivateRoute><Write /></PrivateRoute>} />
+          <Route path="/write/edit/:id" element={<PrivateRoute><Write /></PrivateRoute>} />
+          <Route path="/home" element={<PrivateRoute><FollowFeed /></PrivateRoute>} />
+          <Route path="/user/:name" element={<PrivateRoute><UserProfile /></PrivateRoute>} />
+          <Route path="/explore" element={<PrivateRoute><Explore /></PrivateRoute>} />
+          <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+          <Route path="/notifications" element={<PrivateRoute><Alert /></PrivateRoute>} />
+          <Route path="/tag/:tag" element={<PrivateRoute><TagPage /></PrivateRoute>} />
+          <Route path="/bookmarks" element={<PrivateRoute><Bookmarks /></PrivateRoute>} />
+          <Route path="/stats" element={<PrivateRoute><Stats /></PrivateRoute>} />
+          <Route path="/activity" element={<PrivateRoute><Activity /></PrivateRoute>} />
+          <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/opensource" element={<OpenSource />} />
         </Routes>
       </main>
-      <BottomTabBar />
+      {isLoggedIn && <BottomTabBar />}
     </div>
   )
 }
@@ -131,6 +99,7 @@ export default function App() {
 
   return (
     <ThemeProvider>
+    <AuthProvider>
     <ProfileProvider>
       {splash && <SplashScreen onDone={() => setSplash(false)} />}
       {!splash && onboarding && <Onboarding onDone={handleOnboardingDone} />}
@@ -148,6 +117,7 @@ export default function App() {
         </FollowProvider>
       </PostsProvider>
     </ProfileProvider>
+    </AuthProvider>
     </ThemeProvider>
   )
 }

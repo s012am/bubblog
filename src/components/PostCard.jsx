@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
-import { useProfile } from '../context/ProfileContext'
 import { useRebubble } from '../context/RebubbleContext'
 import { useBookmark } from '../context/BookmarkContext'
 
@@ -33,15 +32,14 @@ function formatRemaining(expiresAt) {
 
 export default function PostCard({ post, showMenu = false }) {
   const navigate = useNavigate()
-  const { deletePost, isLiked } = usePosts()
-  const { profile } = useProfile()
+  const { deletePost, isLiked, currentUserId } = usePosts()
   const { isRebubbled } = useRebubble()
   const { toggleBookmark, isBookmarked } = useBookmark()
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [reportDone, setReportDone] = useState(false)
 
-  const isOwn = !post.author || post.author === profile.name
+  const isOwn = !!currentUserId && post.authorId === currentUserId
 
   useEffect(() => {
     if (!reportDone) return

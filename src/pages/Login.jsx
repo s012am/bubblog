@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const glass = {
   background: 'rgba(255,255,255,0.92)',
@@ -47,7 +48,9 @@ function GlassInput({ type, name, value, onChange, placeholder, autoComplete, ch
 }
 
 export default function Login() {
-  const [form, setForm] = useState({ email: '', password: '' })
+  const { login } = useAuth()
+  const navigate = useNavigate()
+  const [form, setForm] = useState({ id: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -59,14 +62,16 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.email || !form.password) {
-      setError('Please enter your email and password.')
+    if (!form.id || !form.password) {
+      setError('아이디와 비밀번호를 입력해주세요.')
       return
     }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
+    await new Promise((r) => setTimeout(r, 400))
+    const result = await login(form.id, form.password)
     setLoading(false)
-    setError('Invalid email or password.')
+    if (result.error) { setError(result.error); return }
+    navigate('/')
   }
 
   return (
@@ -76,19 +81,16 @@ export default function Login() {
         {/* 로고 */}
         <div className="flex flex-col items-center mb-8">
           <Link to="/" className="flex items-center gap-2 mb-6">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{
-                background: 'rgba(255,255,255,0.7)',
-                border: '1.5px solid rgba(255,255,255,0.9)',
-                boxShadow: '0 2px 16px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,1)',
-              }}
-            >
-              <span className="text-gray-700 text-sm font-bold">B</span>
-            </div>
-            <span className="font-bold text-gray-800 text-xl tracking-tight">Bubblog</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#6b7280" className="w-7 h-7">
+                <circle cx="8" cy="15" r="5" strokeWidth={1.3} />
+                <ellipse cx="5.9" cy="12.9" rx="1.6" ry="0.9" fill="#6b7280" opacity={0.25} transform="rotate(-30 5.9 12.9)" />
+                <circle cx="18" cy="7" r="3" strokeWidth={1.2} />
+                <ellipse cx="16.9" cy="5.9" rx="0.9" ry="0.5" fill="#6b7280" opacity={0.25} transform="rotate(-30 16.9 5.9)" />
+                <circle cx="19.5" cy="17.5" r="1.8" strokeWidth={1.1} />
+                <ellipse cx="18.8" cy="16.8" rx="0.55" ry="0.32" fill="#6b7280" opacity={0.25} transform="rotate(-30 18.8 16.8)" />
+            </svg>
           </Link>
-          <h1 className="text-2xl font-extrabold text-gray-800 tracking-tight">Sign in</h1>
+          <h1 className="text-2xl font-extrabold text-gray-800 tracking-tight">로그인</h1>
         </div>
 
         {/* 카드 */}
@@ -109,25 +111,25 @@ export default function Login() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* 이메일 */}
+            {/* 아이디 */}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5 tracking-wide uppercase">Email</label>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5 tracking-wide uppercase">아이디</label>
               <GlassInput
-                type="email" name="email" value={form.email}
-                onChange={handleChange} placeholder="hello@example.com"
-                autoComplete="email" error={!!error}
+                type="text" name="id" value={form.id}
+                onChange={handleChange} placeholder="아이디를 입력하세요"
+                autoComplete="username" error={!!error}
               />
             </div>
 
             {/* 비밀번호 */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-gray-500 tracking-wide uppercase">Password</label>
-                <Link to="/forgot-password" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Forgot password</Link>
+                <label className="block text-xs font-semibold text-gray-500 tracking-wide uppercase">비밀번호</label>
+                <Link to="/forgot-password" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">비밀번호 찾기</Link>
               </div>
               <GlassInput
                 type={showPassword ? 'text' : 'password'} name="password" value={form.password}
-                onChange={handleChange} placeholder="Enter password"
+                onChange={handleChange} placeholder="비밀번호를 입력하세요"
                 autoComplete="current-password" error={!!error}
               >
                 <button
@@ -175,9 +177,9 @@ export default function Login() {
                     <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" strokeOpacity="0.25" />
                     <path d="M14 8a6 6 0 0 0-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   </svg>
-                  Signing in...
+                  로그인 중...
                 </>
-              ) : 'Sign in'}
+              ) : '로그인'}
             </button>
           </form>
 
@@ -205,14 +207,14 @@ export default function Login() {
               <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" />
               <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
             </svg>
-            Continue with Google
+            Google로 계속하기
           </button>
         </div>
 
         <p className="text-center text-sm text-gray-400 mt-5">
-          No account yet?{' '}
+          계정이 없으신가요?{' '}
           <Link to="/register" className="font-semibold text-gray-700 hover:text-gray-500 transition-colors">
-            Sign up
+            회원가입
           </Link>
         </p>
       </div>

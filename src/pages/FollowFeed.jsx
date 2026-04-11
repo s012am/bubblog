@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
 import { useFollow } from '../context/FollowContext'
-import { SAMPLE_POSTS, SAMPLE_USERS } from '../data/sampleUsers'
+import { SAMPLE_USERS } from '../data/sampleUsers'
 
 const RADII = [65, 58, 54, 62]
 
@@ -114,12 +114,11 @@ export default function FollowFeed() {
   const [flippedIds, setFlippedIds] = useState(new Set())
 
   const feedPosts = useMemo(() => {
-    const allPosts = [...posts, ...SAMPLE_POSTS]
     const seen = new Set()
     const result = []
-    for (const p of allPosts) {
+    for (const p of posts) {
       if (seen.has(p.id)) continue
-      const byFollowed = following.includes(p.author)
+      const byFollowed = following.includes(p.authorUsername)
       const rebubbledByFollowed = (p.rebubbledBy || []).some((u) => following.includes(u))
       if (byFollowed || rebubbledByFollowed) {
         seen.add(p.id)
@@ -334,7 +333,7 @@ export default function FollowFeed() {
               <circle cx="19.5" cy="17.5" r="1.8" />
             </svg>
             <p className="text-sm text-gray-300 text-center leading-relaxed">
-              아직 팔로우한 사람이 없습니다.
+              Bubble을 탐색해 보세요.
             </p>
           </div>
         )}
@@ -342,7 +341,7 @@ export default function FollowFeed() {
         {following.length > 0 && feedPosts.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-sm text-gray-300 text-center leading-relaxed">
-              팔로우한 사람의 글이 없습니다.
+              Bubble을 탐색해 보세요.
             </p>
           </div>
         )}

@@ -1,38 +1,65 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
 
 const FollowContext = createContext(null)
 
-const STORAGE_KEY = 'bubblog_following'
-
-function load() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    return saved ? JSON.parse(saved) : []
-  } catch {
-    return []
-  }
-}
-
 export function FollowProvider({ children }) {
-  const [following, setFollowing] = useState(load)
+  const [following, setFollowing] = useState([]) // usernames
+  const [currentUserId, setCurrentUserId] = useState(null)
 
-  const follow = (name) => {
-    setFollowing((prev) => {
-      const next = prev.includes(name) ? prev : [...prev, name]
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-      return next
+  const fetchFollowing = useCallback(async (userId) => {
+    const { data: rows } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', userId)
+
+    if (!rows || rows.length === 0) { setFollowing([]); return }
+
+    const ids = rows.map(r => r.following_id)
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('username')
+      .in('id', ids)
+
+    setFollowing((profiles || []).map(p => p.username))
+  }, [])
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) { setCurrentUserId(session.user.id); fetchFollowing(session.user.id) }
     })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) { setCurrentUserId(session.user.id); fetchFollowing(session.user.id) }
+      else { setCurrentUserId(null); setFollowing([]) }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [fetchFollowing])
+
+  const follow = async (username) => {
+    if (!currentUserId) return
+    const { data: target } = await supabase
+      .from('profiles').select('id').eq('username', username).single()
+    if (!target) return
+
+    await supabase.from('follows').insert({ follower_id: currentUserId, following_id: target.id })
+    setFollowing(prev => prev.includes(username) ? prev : [...prev, username])
   }
 
-  const unfollow = (name) => {
-    setFollowing((prev) => {
-      const next = prev.filter((n) => n !== name)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-      return next
-    })
+  const unfollow = async (username) => {
+    if (!currentUserId) return
+    const { data: target } = await supabase
+      .from('profiles').select('id').eq('username', username).single()
+    if (!target) return
+
+    await supabase.from('follows').delete()
+      .eq('follower_id', currentUserId)
+      .eq('following_id', target.id)
+    setFollowing(prev => prev.filter(n => n !== username))
   }
 
-  const isFollowing = (name) => following.includes(name)
+  const isFollowing = (username) => following.includes(username)
 
   return (
     <FollowContext.Provider value={{ following, follow, unfollow, isFollowing }}>

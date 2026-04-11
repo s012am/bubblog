@@ -23,7 +23,8 @@ const BUBBLES = [
 
 export default function SplashScreen({ onDone }) {
   const [out, setOut] = useState(false)
-  const isDark = localStorage.getItem('bubblog_theme') === 'dark'
+  const themeId = localStorage.getItem('bubblog_theme') || 'default'
+  const isDark = themeId === 'dark'
 
   useEffect(() => {
     const t1 = setTimeout(() => setOut(true), 1200)
@@ -32,11 +33,18 @@ export default function SplashScreen({ onDone }) {
   }, [])
 
   const bg = isDark ? '#1c1c1e' : 'white'
-  const color = isDark ? '#f3f4f6' : '#1f2937'
+
+  const themeColors = {
+    rose: '#e89ec4',
+    warm: '#f2b882',
+    sage: '#6ec48a',
+    cool: '#818cf8',
+  }
+  const color = isDark ? '#f3f4f6' : (themeColors[themeId] ?? '#1f2937')
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-5"
+      className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-2"
       style={{
         background: bg,
         opacity: out ? 0 : 1,

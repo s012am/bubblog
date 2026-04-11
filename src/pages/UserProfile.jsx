@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
 import { useFollow } from '../context/FollowContext'
-import { SAMPLE_POSTS, SAMPLE_USERS } from '../data/sampleUsers'
+import { supabase } from '../lib/supabase'
 import PostCard from '../components/PostCard'
 import InfoSheet from '../components/InfoSheet'
 
@@ -89,14 +89,22 @@ export default function UserProfile() {
   const { posts: myPosts } = usePosts()
   const { isFollowing, follow, unfollow } = useFollow()
 
-  const user = SAMPLE_USERS.find((u) => u.name === name) ?? { name, bio: '', avatar: null }
-  const allPosts = [...myPosts, ...SAMPLE_POSTS]
-  const userPosts = useMemo(() => allPosts.filter((p) => p.author === name).slice(0, 15), [name, myPosts])
+  const [user, setUser] = useState({ name, bio: '', avatar: null })
+
+  useEffect(() => {
+    supabase.from('profiles').select('username, nickname, bio, avatar_url').eq('username', name).single()
+      .then(({ data }) => {
+        if (data) setUser({ name: data.username, nickname: data.nickname, bio: data.bio || '', avatar: data.avatar_url || null })
+      })
+  }, [name])
+
+  const userPosts = useMemo(() => myPosts.filter((p) => p.authorUsername === name || p.author === name).slice(0, 15), [name, myPosts])
 
   const [activeTab, setActiveTab] = useState('drift')
   const [showList, setShowList] = useState(false)
   const [listTab, setListTab] = useState('all')
   const [infoOpen, setInfoOpen] = useState(false)
+
   const [tick, setTick] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
 
@@ -117,7 +125,7 @@ export default function UserProfile() {
   }, [userPosts])
 
   useEffect(() => {
-    if (activeTab !== 'drift' || showList || infoOpen) return
+    if (activeTab !== 'drift' || showList) return
     reset()
     const onResize = () => reset()
     window.addEventListener('resize', onResize)
@@ -182,7 +190,7 @@ export default function UserProfile() {
     }
     rafRef.current = requestAnimationFrame(loop)
     return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener('resize', onResize) }
-  }, [reset, activeTab, showList, infoOpen])
+  }, [reset, activeTab, showList])
 
   const onMouseDown = useCallback((e, bubbleId) => {
     e.preventDefault()
@@ -319,7 +327,13 @@ export default function UserProfile() {
             <button
               onClick={() => followed ? unfollow(name) : follow(name)}
               className="px-4 py-1 rounded-full text-xs font-semibold transition-all"
-              style={{ background: followed ? 'rgba(0,0,0,0.06)' : 'rgba(30,30,30,0.85)', color: followed ? '#6b7280' : 'white', border: followed ? '1px solid rgba(0,0,0,0.1)' : 'none' }}
+              style={(() => {
+                const isDark = document.documentElement.hasAttribute('data-dark')
+                if (followed) return { background: 'var(--input-bg)', color: '#6b7280', border: '1px solid var(--divider)' }
+                return isDark
+                  ? { background: 'rgba(255,255,255,0.9)', color: '#111', border: 'none' }
+                  : { background: 'rgba(30,30,30,0.85)', color: 'white', border: 'none' }
+              })()}
             >
               {followed ? 'Following' : 'Follow'}
             </button>
@@ -344,8 +358,8 @@ export default function UserProfile() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className="flex-1 py-2 text-xs font-semibold transition-all"
-                style={{ color: activeTab === tab.id ? '#1f2937' : '#9ca3af', borderBottom: activeTab === tab.id ? '2px solid #1f2937' : '2px solid transparent' }}
+                className={`flex-1 py-2 text-xs font-semibold transition-all ${activeTab === tab.id ? 'text-gray-800' : 'text-gray-400'}`}
+                style={{ borderBottom: activeTab === tab.id ? '2px solid currentColor' : '2px solid transparent' }}
               >{tab.label}</button>
             ))}
           </div>
@@ -355,13 +369,13 @@ export default function UserProfile() {
       {/* 목록 뷰 */}
       {showList && (
         <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="flex border-b border-gray-100 bg-white">
+          <div className="flex border-b border-gray-100" style={{ background: 'var(--nav-bg)' }}>
             {[{ id: 'all', label: 'All' }, { id: 'log', label: 'Log' }, { id: 'pop', label: 'Pop' }].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setListTab(tab.id)}
-                className="flex-1 py-2 text-xs font-semibold transition-all"
-                style={{ color: listTab === tab.id ? '#1f2937' : '#9ca3af', borderBottom: listTab === tab.id ? '2px solid #1f2937' : '2px solid transparent' }}
+                className={`flex-1 py-2 text-xs font-semibold transition-all ${listTab === tab.id ? 'text-gray-800' : 'text-gray-400'}`}
+                style={{ borderBottom: listTab === tab.id ? '2px solid currentColor' : '2px solid transparent' }}
               >{tab.label}</button>
             ))}
           </div>
@@ -415,9 +429,9 @@ export default function UserProfile() {
           log={userPosts.filter(p => p.type === 'log' || !p.type).length}
           pop={userPosts.filter(p => p.type === 'pop').length}
           followers={followed ? 1 : 0}
-          followings={0}
-          onFollowersClick={() => setInfoOpen(false)}
-          onFollowingsClick={() => setInfoOpen(false)}
+          following={0}
+          followerUsers={followed ? [{ name: 'me' }] : []}
+          followingUsers={[]}
           profileUrl={`${window.location.origin}/user/${name}`}
         />
       )}

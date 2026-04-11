@@ -2,7 +2,6 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useNotification } from '../context/NotificationContext'
 import { useProfile } from '../context/ProfileContext'
-import { SAMPLE_USERS } from '../data/sampleUsers'
 import { useTheme, THEMES } from '../context/ThemeContext'
 
 function timeAgo(date) {
@@ -88,7 +87,7 @@ function SwipeableNotification({ children, onDelete }) {
   return (
     <div className="relative overflow-hidden" style={{ maxHeight: deleting ? 0 : 200, transition: deleting ? 'max-height 0.26s ease' : undefined }}>
       {/* 삭제 버튼 */}
-      <div className="absolute inset-y-0 right-0 flex items-center" style={{ width: 72, background: '#fca5a5' }}>
+      <div className="absolute inset-y-0 right-0 flex items-center" style={{ width: 72, background: '#f87171' }}>
         <button onClick={handleDelete} className="w-full h-full flex items-center justify-center">
           <svg viewBox="0 0 20 20" fill="none" stroke="white" strokeWidth="1.6" className="w-5 h-5">
             <path d="M3 5h14M7 5V3h6v2M16 5l-.7 11a1 1 0 0 1-1 .9H5.7a1 1 0 0 1-1-.9L4 5" strokeLinecap="round" strokeLinejoin="round" />
@@ -120,21 +119,19 @@ export default function Alert() {
 
   function getUser(name) {
     if (name === profile.name) return { name: profile.name, avatar: profile.avatar }
-    return SAMPLE_USERS.find((u) => u.name === name) ?? { name, avatar: null }
+    return { name, avatar: null }
   }
 
   function handleProfileClick(e, n) {
     e.stopPropagation()
     markRead(n.id)
-    const isSample = SAMPLE_USERS.some((u) => u.name === n.from)
-    navigate(isSample ? `/user/${n.from}` : '/')
+    navigate(`/user/${n.from}`)
   }
 
   function handleContentClick(n) {
     markRead(n.id)
     if (n.type === 'follow') {
-      const isSample = SAMPLE_USERS.some((u) => u.name === n.from)
-      navigate(isSample ? `/user/${n.from}` : '/')
+      navigate(`/user/${n.from}`)
     } else if (n.type === 'comment' && n.postId) {
       navigate(`/post/${n.postId}`, { state: { openComments: true } })
     } else if (n.postId) {

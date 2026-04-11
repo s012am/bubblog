@@ -4,7 +4,6 @@ import { usePosts } from '../context/PostsContext'
 import { useProfile } from '../context/ProfileContext'
 import { useFollow } from '../context/FollowContext'
 import { useRebubble } from '../context/RebubbleContext'
-import { SAMPLE_POSTS, SAMPLE_USERS } from '../data/sampleUsers'
 
 function highlightText(text, query) {
   if (!query) return text
@@ -31,11 +30,12 @@ function formatRemaining(expiresAt) {
   return `${Math.floor(h / 24)}일 후 삭제`
 }
 
-function DiscoverPostCard({ post, profile }) {
+function DiscoverPostCard({ post }) {
   const { isRebubbled } = useRebubble()
   const d = new Date(post.date)
   const formattedDate = `${d.getFullYear()} · ${String(d.getMonth() + 1).padStart(2, '0')} · ${String(d.getDate()).padStart(2, '0')}`
-  const author = post.author === profile.name ? profile : SAMPLE_USERS.find((u) => u.name === post.author)
+  const authorName = post.author
+  const authorAvatar = post.authorAvatar
   return (
     <Link
       to={`/post/${post.id}`}
@@ -46,11 +46,11 @@ function DiscoverPostCard({ post, profile }) {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <div className="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0" style={{ background: 'var(--avatar-bg)' }}>
-            {author?.avatar
-              ? <img src={author.avatar} alt="avatar" className="w-full h-full object-cover" />
-              : <span className="text-gray-500 font-semibold" style={{ fontSize: '8px' }}>{(post.author || '?')[0].toUpperCase()}</span>}
+            {authorAvatar
+              ? <img src={authorAvatar} alt="avatar" className="w-full h-full object-cover" />
+              : <span className="text-gray-500 font-semibold" style={{ fontSize: '8px' }}>{(authorName || '?')[0].toUpperCase()}</span>}
           </div>
-          <span className="text-xs font-semibold text-gray-500">{post.author}</span>
+          <span className="text-xs font-semibold text-gray-500">{authorName}</span>
         </div>
         {post.tags?.length > 0 && (
           <div className="flex items-center gap-1 flex-wrap justify-end">
@@ -113,7 +113,6 @@ export default function Explore() {
   const { posts } = usePosts()
   const { profile } = useProfile()
   const { isFollowing, follow, unfollow } = useFollow()
-  const allPosts = [...posts, ...SAMPLE_POSTS]
   const [query, setQuery] = useState('')
   const [activeTab, setActiveTab] = useState('all')
   const [focused, setFocused] = useState(false)
@@ -147,52 +146,47 @@ export default function Explore() {
 
   const matchedPosts = useMemo(() => {
     if (!q) return []
-    return allPosts.filter((p) =>
+    return posts.filter((p) =>
       p.title?.toLowerCase().includes(q) ||
       p.excerpt?.toLowerCase().includes(q) ||
       p.content?.toLowerCase().includes(q) ||
       p.tags?.some((t) => t.toLowerCase().includes(q)) ||
       p.author?.toLowerCase().includes(q)
     )
-  }, [allPosts, q])
+  }, [posts, q])
 
   const matchedTags = useMemo(() => {
     if (!q) return []
     const tagSet = new Set()
-    allPosts.forEach((p) => {
+    posts.forEach((p) => {
       p.tags?.forEach((t) => {
         if (t.toLowerCase().includes(q)) tagSet.add(t)
       })
     })
     return [...tagSet]
-  }, [allPosts, q])
+  }, [posts, q])
 
   const matchedAuthors = useMemo(() => {
     if (!q) return []
     const results = []
-    // 현재 유저
     if (profile.name.toLowerCase().includes(q)) {
       results.push({ name: profile.name, avatar: profile.avatar, bio: profile.bio, postCount: posts.length, isMe: true })
     }
-    // 샘플 유저
-    SAMPLE_USERS.forEach((u) => {
-      if (u.name.toLowerCase().includes(q)) {
-        results.push({ ...u, postCount: SAMPLE_POSTS.filter((p) => p.author === u.name).length, isMe: false })
-      }
-    })
     return results
   }, [profile, posts, q])
+
+  const [shuffleSeed] = useState(Math.random)
 
   // 탐색 화면용 데이터
   const popularTags = useMemo(() => {
     const counts = {}
-    allPosts.forEach((p) => p.tags?.forEach((t) => { counts[t] = (counts[t] ?? 0) + 1 }))
+    posts.forEach((p) => p.tags?.forEach((t) => { counts[t] = (counts[t] ?? 0) + 1 }))
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([t]) => t)
-  }, [allPosts])
+  }, [posts])
 
   const recommendedPosts = useMemo(() => {
     const now = Date.now()
-    return [...allPosts]
+    const top20 = [...posts]
       .map((p) => {
         const ageDays = (now - new Date(p.date).getTime()) / (1000 * 60 * 60 * 24)
         const recency = Math.max(0, 10 - ageDays * 0.3)
@@ -202,17 +196,25 @@ export default function Explore() {
         return { ...p, _score: recency + comments + tags + rebubbles }
       })
       .sort((a, b) => b._score - a._score)
-      .slice(0, 10)
-  }, [allPosts])
+      .slice(0, 20)
+    let s = shuffleSeed
+    const result = [...top20]
+    for (let i = result.length - 1; i > 0; i--) {
+      s = (s * 9301 + 49297) % 233280
+      const j = Math.floor((s / 233280) * (i + 1))
+      ;[result[i], result[j]] = [result[j], result[i]]
+    }
+    return result.slice(0, 10)
+  }, [posts, shuffleSeed])
 
   const shownPosts = activeTab === 'people' || activeTab === 'tags' ? [] : matchedPosts
   const shownPeople = activeTab === 'posts' || activeTab === 'tags' ? [] : matchedAuthors
   const shownTags = activeTab === 'posts' || activeTab === 'people' ? [] : matchedTags
   const tagFilteredPosts = useMemo(() =>
     activeTab === 'tags' && q
-      ? allPosts.filter((p) => p.tags?.some((t) => t.toLowerCase().includes(q)))
+      ? posts.filter((p) => p.tags?.some((t) => t.toLowerCase().includes(q)))
       : []
-  , [activeTab, allPosts, q])
+  , [activeTab, posts, q])
 
   return (
     <div className="min-h-screen">
@@ -326,9 +328,11 @@ export default function Explore() {
             <section>
               <h2 className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-3">추천 글</h2>
               <div className="flex flex-col gap-2">
-                {recommendedPosts.map((post) => (
-                  <DiscoverPostCard key={post.id} post={post} profile={profile} />
-                ))}
+                {recommendedPosts.length === 0
+                  ? <p className="text-sm text-gray-300 text-center py-4">글이 없습니다.</p>
+                  : recommendedPosts.map((post) => (
+                    <DiscoverPostCard key={post.id} post={post} />
+                  ))}
               </div>
             </section>
           </div>
@@ -363,37 +367,34 @@ export default function Explore() {
               <>
                 <h2 className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-3">관련 글</h2>
                 <div className="flex flex-col gap-2">
-                  {tagFilteredPosts.map((post) => {
-                    const author = post.author === profile.name ? profile : SAMPLE_USERS.find((u) => u.name === post.author)
-                    return (
-                      <Link
-                        key={post.id}
-                        to={`/post/${post.id}`}
-                        className="block p-4 rounded-2xl transition-all hover:-translate-y-0.5"
-                        style={{ background: 'var(--card-bg)', border: '1px solid var(--divider)', boxShadow: 'var(--card-shadow)' }}
-                      >
-                        {post.tags?.length > 0 && (
-                          <p className="text-xs text-gray-400 mb-1">
-                            {post.tags.map((t, i) => <span key={t}>{i > 0 && ' · '}{highlightText(t, query)}</span>)}
-                          </p>
-                        )}
-                        <p className="text-sm font-bold text-gray-800 leading-snug mb-1">{post.title}</p>
-                        {post.excerpt && (
-                          <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{post.excerpt}</p>
-                        )}
-                        <div className="flex items-center gap-1.5 mt-2">
-                          <div className="w-4 h-4 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0" style={{ background: 'var(--avatar-bg)' }}>
-                            {author?.avatar
-                              ? <img src={author.avatar} alt="avatar" className="w-full h-full object-cover" />
-                              : <span className="text-gray-500 font-semibold" style={{ fontSize: '8px' }}>{(post.author || '?')[0].toUpperCase()}</span>}
-                          </div>
-                          <span className="text-xs text-gray-400">{post.author}</span>
-                          <span className="text-xs text-gray-300">·</span>
-                          <span className="text-xs text-gray-400">{post.date?.replace(/-/g, ' · ')}</span>
+                  {tagFilteredPosts.map((post) => (
+                    <Link
+                      key={post.id}
+                      to={`/post/${post.id}`}
+                      className="block p-4 rounded-2xl transition-all hover:-translate-y-0.5"
+                      style={{ background: 'var(--card-bg)', border: '1px solid var(--divider)', boxShadow: 'var(--card-shadow)' }}
+                    >
+                      {post.tags?.length > 0 && (
+                        <p className="text-xs text-gray-400 mb-1">
+                          {post.tags.map((t, i) => <span key={t}>{i > 0 && ' · '}{highlightText(t, query)}</span>)}
+                        </p>
+                      )}
+                      <p className="text-sm font-bold text-gray-800 leading-snug mb-1">{post.title}</p>
+                      {post.excerpt && (
+                        <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{post.excerpt}</p>
+                      )}
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <div className="w-4 h-4 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0" style={{ background: 'var(--avatar-bg)' }}>
+                          {post.authorAvatar
+                            ? <img src={post.authorAvatar} alt="avatar" className="w-full h-full object-cover" />
+                            : <span className="text-gray-500 font-semibold" style={{ fontSize: '8px' }}>{(post.author || '?')[0].toUpperCase()}</span>}
                         </div>
-                      </Link>
-                    )
-                  })}
+                        <span className="text-xs text-gray-400">{post.author}</span>
+                        <span className="text-xs text-gray-300">·</span>
+                        <span className="text-xs text-gray-400">{new Date(post.date).toLocaleDateString()}</span>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </>
             )}
@@ -448,42 +449,39 @@ export default function Explore() {
           <section>
             <h2 className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-3">글</h2>
             <div className="flex flex-col gap-2">
-              {shownPosts.map((post) => {
-                const author = post.author === profile.name ? profile : SAMPLE_USERS.find((u) => u.name === post.author)
-                return (
-                  <Link
-                    key={post.id}
-                    to={`/post/${post.id}`}
-                    className="block p-4 rounded-2xl transition-all hover:-translate-y-0.5"
-                    style={{ background: 'var(--card-bg)', border: '1px solid var(--divider)', boxShadow: 'var(--card-shadow)' }}
-                  >
-                    {post.tags?.length > 0 && (
-                      <p className="text-xs text-gray-400 mb-1">
-                        {post.tags.map((t, i) => <span key={t}>{i > 0 && ' · '}{highlightText(t, query)}</span>)}
-                      </p>
-                    )}
-                    <p className="text-sm font-bold text-gray-800 leading-snug mb-1">
-                      {highlightText(post.title, query)}
+              {shownPosts.map((post) => (
+                <Link
+                  key={post.id}
+                  to={`/post/${post.id}`}
+                  className="block p-4 rounded-2xl transition-all hover:-translate-y-0.5"
+                  style={{ background: 'var(--card-bg)', border: '1px solid var(--divider)', boxShadow: 'var(--card-shadow)' }}
+                >
+                  {post.tags?.length > 0 && (
+                    <p className="text-xs text-gray-400 mb-1">
+                      {post.tags.map((t, i) => <span key={t}>{i > 0 && ' · '}{highlightText(t, query)}</span>)}
                     </p>
-                    {post.excerpt && (
-                      <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
-                        {highlightText(post.excerpt, query)}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-1.5 mt-2">
-                      <div className="w-4 h-4 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'var(--avatar-bg)' }}>
-                        {author?.avatar
-                          ? <img src={author.avatar} alt="avatar" className="w-full h-full object-cover" />
-                          : <span className="text-gray-500 font-semibold" style={{ fontSize: '8px' }}>{(post.author || '?')[0].toUpperCase()}</span>}
-                      </div>
-                      <span className="text-xs text-gray-400">{highlightText(post.author || '', query)}</span>
-                      <span className="text-xs text-gray-300">·</span>
-                      <span className="text-xs text-gray-400">{post.date?.replace(/-/g, ' · ')}</span>
+                  )}
+                  <p className="text-sm font-bold text-gray-800 leading-snug mb-1">
+                    {highlightText(post.title, query)}
+                  </p>
+                  {post.excerpt && (
+                    <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
+                      {highlightText(post.excerpt, query)}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <div className="w-4 h-4 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'var(--avatar-bg)' }}>
+                      {post.authorAvatar
+                        ? <img src={post.authorAvatar} alt="avatar" className="w-full h-full object-cover" />
+                        : <span className="text-gray-500 font-semibold" style={{ fontSize: '8px' }}>{(post.author || '?')[0].toUpperCase()}</span>}
                     </div>
-                  </Link>
-                )
-              })}
+                    <span className="text-xs text-gray-400">{highlightText(post.author || '', query)}</span>
+                    <span className="text-xs text-gray-300">·</span>
+                    <span className="text-xs text-gray-400">{new Date(post.date).toLocaleDateString()}</span>
+                  </div>
+                </Link>
+              ))}
             </div>
           </section>
         )}

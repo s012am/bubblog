@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useBookmark } from '../context/BookmarkContext'
 import { usePosts } from '../context/PostsContext'
-import { SAMPLE_POSTS } from '../data/sampleUsers'
 import PostCard from '../components/PostCard'
 
 export default function Bookmarks() {
@@ -9,10 +8,9 @@ export default function Bookmarks() {
   const { bookmarks } = useBookmark()
   const { posts } = usePosts()
 
-  const allPosts = [...posts, ...SAMPLE_POSTS]
   const bookmarkedPosts = [...bookmarks]
     .reverse()
-    .map((id) => allPosts.find((p) => p.id === id || p.id === Number(id)))
+    .map((id) => posts.find((p) => String(p.id) === String(id)))
     .filter(Boolean)
 
   return (

@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
-import { SAMPLE_POSTS } from '../data/sampleUsers'
 import { useProfile } from '../context/ProfileContext'
 import { useRebubble } from '../context/RebubbleContext'
 import { useBookmark } from '../context/BookmarkContext'
+import { supabase } from '../lib/supabase'
 
 function formatRemaining(expiresAt) {
   const ms = expiresAt - Date.now()
@@ -293,11 +293,43 @@ export default function PostDetail() {
     const t = setTimeout(() => setReportDone(false), 2500)
     return () => clearTimeout(t)
   }, [reportDone])
-  const post = posts.find((p) => p.id === Number(id) || p.id === id)
-    ?? SAMPLE_POSTS.find((p) => p.id === id)
-  const isSample = !posts.find((p) => p.id === Number(id) || p.id === id) && !!post
+  const [fetchedPost, setFetchedPost] = useState(null)
+  const [notFound, setNotFound] = useState(false)
 
-  if (!post) {
+  const post = posts.find((p) => String(p.id) === String(id)) ?? fetchedPost
+
+  useEffect(() => {
+    if (post) return
+    supabase
+      .from('posts')
+      .select('*, profiles(username, nickname, avatar_url), likes(user_id), comments(id, author_id, content, created_at, parent_id, profiles(username, nickname))')
+      .eq('id', id)
+      .single()
+      .then(({ data }) => {
+        if (!data) { setNotFound(true); return }
+        const flat = (data.comments || []).map(c => ({
+          id: c.id, author: c.profiles?.nickname || c.profiles?.username || '',
+          authorId: c.author_id, content: c.content, date: c.created_at, parentId: c.parent_id || null, replies: [],
+        }))
+        const map = {}; flat.forEach(c => { map[c.id] = c })
+        const roots = []; flat.forEach(c => { if (c.parentId && map[c.parentId]) map[c.parentId].replies.push(c); else roots.push(c) })
+        setFetchedPost({
+          id: data.id, title: data.title || '', content: data.content, excerpt: data.excerpt || '',
+          type: data.type || 'bubble', tags: data.tags || [], cover: data.cover || null,
+          expiresAt: data.expires_at ? new Date(data.expires_at).getTime() : null,
+          viewCount: data.view_count || 0, date: data.created_at,
+          author: data.profiles?.nickname || data.profiles?.username || '',
+          authorUsername: data.profiles?.username || '', authorId: data.author_id,
+          authorAvatar: data.profiles?.avatar_url || null,
+          likes: (data.likes || []).map(l => l.user_id), comments: roots,
+          readTime: Math.max(1, Math.ceil((data.content || '').length / 500)),
+        })
+      })
+  }, [id, post])
+
+  const isSample = false
+
+  if (notFound) {
     return (
       <div className="max-w-3xl mx-auto px-5 py-20 text-center">
         <p className="text-gray-400 text-sm mb-4">포스트를 찾을 수 없습니다.</p>
@@ -306,8 +338,25 @@ export default function PostDetail() {
     )
   }
 
+  if (!post) return null
+
   const isHTML = /<[a-z][\s\S]*>/i.test(post.content ?? '')
-  const blocks = isHTML ? null : parseContent(post.content)
+
+  function htmlToPlainLines(html) {
+    return html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/div>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+  }
+
+  const rawContent = isHTML ? htmlToPlainLines(post.content) : (post.content ?? '')
+  const hasMarkdown = /```|^##\s/m.test(rawContent)
+  const blocks = (isHTML && !hasMarkdown) ? null : parseContent(rawContent)
   const _d = new Date(post.date)
   const formattedDate = `${_d.getFullYear()} · ${String(_d.getMonth() + 1).padStart(2, '0')} · ${String(_d.getDate()).padStart(2, '0')} · ${String(_d.getHours()).padStart(2, '0')}:${String(_d.getMinutes()).padStart(2, '0')}`
 
@@ -443,7 +492,7 @@ export default function PostDetail() {
             </span>
           </div>
           <div className="pt-3 space-y-5">
-            {isHTML
+            {(isHTML && !hasMarkdown)
               ? <div className="write-editor text-sm text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: post.content }} />
               : blocks.map((block, i) => <ContentBlock key={i} block={block} />)
             }

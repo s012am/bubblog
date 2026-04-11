@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
-import { SAMPLE_POSTS } from '../data/sampleUsers'
 import PostCard from '../components/PostCard'
 
 const tabs = ['최근 본 글', '좋아요한 글']
@@ -11,13 +10,11 @@ export default function Activity() {
   const { posts, recentlyViewed, isLiked } = usePosts()
   const [tab, setTab] = useState(0)
 
-  const allPosts = [...posts, ...SAMPLE_POSTS]
-
   const recentPosts = recentlyViewed
-    .map((id) => allPosts.find((p) => p.id === id || p.id === Number(id)))
+    .map((id) => posts.find((p) => String(p.id) === String(id)))
     .filter(Boolean)
 
-  const likedPosts = allPosts.filter((p) => isLiked(p.id))
+  const likedPosts = posts.filter((p) => isLiked(p.id))
 
   const list = tab === 0 ? recentPosts : likedPosts
   const emptyMsg = tab === 0 ? '최근 본 글이 없어요.' : '좋아요한 글이 없어요.'

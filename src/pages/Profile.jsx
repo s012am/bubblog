@@ -4,7 +4,8 @@ import { usePosts } from '../context/PostsContext'
 import { useProfile } from '../context/ProfileContext'
 import { useFollow } from '../context/FollowContext'
 import { useDraft } from '../context/DraftContext'
-import { SAMPLE_USERS } from '../data/sampleUsers'
+import { useTheme, THEMES } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
 
 function timeAgo(ts) {
   const diff = Date.now() - ts
@@ -34,6 +35,8 @@ function calcStreak(posts) {
 
 function StreakGrid({ posts }) {
   const navigate = useNavigate()
+  const { themeId } = useTheme()
+  const dotColor = (THEMES.find((t) => t.id === themeId) || THEMES[0]).dot
   const today = new Date()
   const [offset, setOffset] = useState(0)
   const [selectedDate, setSelectedDate] = useState(null)
@@ -87,14 +90,15 @@ function StreakGrid({ posts }) {
                 }}
                 className="w-6 h-6 rounded-full flex items-center justify-center transition-transform active:scale-90"
                 style={{
-                  background: selectedDate === cell.key ? 'rgba(55,65,81,1)' : cell.active ? 'rgba(55,65,81,0.85)' : 'transparent',
-                  outline: cell.isToday && !cell.active ? '1.5px solid rgba(55,65,81,0.25)' : 'none',
+                  background: selectedDate === cell.key ? dotColor : cell.active ? dotColor : 'transparent',
+                  opacity: cell.active && selectedDate !== cell.key ? 0.8 : 1,
+                  outline: cell.isToday && !cell.active ? `1.5px solid ${dotColor}55` : 'none',
                   outlineOffset: '0px',
                   cursor: cell.active ? 'pointer' : 'default',
-                  boxShadow: selectedDate === cell.key ? '0 0 0 3px rgba(55,65,81,0.12)' : 'none',
+                  boxShadow: selectedDate === cell.key ? `0 0 0 3px ${dotColor}30` : 'none',
                 }}
               >
-                <span style={{ fontSize: '10px', fontWeight: cell.active || cell.isToday ? 700 : 400, color: cell.active ? 'white' : cell.isToday ? '#374151' : '#9ca3af' }}>
+                <span style={{ fontSize: '10px', fontWeight: cell.active || cell.isToday ? 700 : 400, color: cell.active ? (themeId === 'dark' ? '#1c1c1e' : 'white') : cell.isToday ? (themeId === 'dark' ? '#f3f4f6' : '#374151') : '#9ca3af' }}>
                   {cell.d}
                 </span>
               </button>
@@ -127,12 +131,12 @@ function StreakGrid({ posts }) {
 }
 
 export default function Profile() {
-  const { posts } = usePosts()
+  const { posts, renameAuthor } = usePosts()
   const { profile, setProfile } = useProfile()
-  const { following, isFollowing } = useFollow()
+  const { following } = useFollow()
   const { drafts, deleteDraft } = useDraft()
+  const { logout } = useAuth()
   const navigate = useNavigate()
-  const followed = isFollowing(profile.name)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(profile)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -144,7 +148,11 @@ export default function Profile() {
   const followDragStartTranslate = useRef(40)
   const fileInputRef = useRef(null)
 
-  const openFollowSheet = (tab) => { setFollowSheet(tab); setFollowTranslate(40) }
+  const openFollowSheet = (tab) => {
+    setFollowTranslate(100)
+    setFollowSheet(tab)
+    requestAnimationFrame(() => requestAnimationFrame(() => setFollowTranslate(0)))
+  }
   const closeFollowSheet = () => { setFollowTranslate(100); setTimeout(() => setFollowSheet(null), 300) }
 
   const handleFollowDragStart = (e) => {
@@ -164,12 +172,13 @@ export default function Profile() {
     else setFollowTranslate(0)
   }
 
-  const followingUsers = SAMPLE_USERS.filter((u) => following.includes(u.name))
-  const followerUsers = followed ? [{ name: 'soyeon', bio: '일상과 생각을 기록해요', avatar: null }] : []
+  const followingUsers = following.map(n => ({ name: n, avatar: null, bio: '', linkTo: `/user/${n}` }))
+  const followerUsers = []
 
   const streak = calcStreak(posts)
 
   const handleSave = () => {
+    if (draft.name !== profile.name) renameAuthor(profile.name, draft.name)
     setProfile(draft)
     setEditing(false)
   }
@@ -270,15 +279,27 @@ export default function Profile() {
               )}
             </div>
             {editing ? (
-              <input
-                value={draft.name}
-                onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
-                className="text-center text-xs font-bold text-gray-800 bg-transparent focus:outline-none border-b border-gray-200 w-full"
-                style={{ lineHeight: '1.5', padding: '0 0 1px' }}
-                placeholder="이름"
-              />
+              <div className="flex flex-col gap-1 w-full">
+                <input
+                  value={draft.name}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
+                  className="text-center text-xs font-bold text-gray-800 bg-transparent focus:outline-none border-b border-gray-200 w-full"
+                  style={{ lineHeight: '1.5', padding: '0 0 1px' }}
+                  placeholder="닉네임"
+                />
+                <input
+                  value={draft.id || ''}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, id: e.target.value }))}
+                  className="text-center text-xs text-gray-400 bg-transparent focus:outline-none border-b border-gray-200 w-full"
+                  style={{ lineHeight: '1.5', padding: '0 0 1px' }}
+                  placeholder="아이디"
+                />
+              </div>
             ) : (
-              <p className="text-xs font-bold text-gray-800 text-center w-full border-b border-transparent" style={{ lineHeight: '1.5', padding: '0 0 1px' }}>{profile.name}</p>
+              <div className="flex flex-col items-center gap-0.5 w-full">
+                <p className="text-xs font-bold text-gray-800 text-center">{profile.name}</p>
+                {profile.id && <p className="text-xs text-gray-400 text-center">@{profile.id}</p>}
+              </div>
             )}
           </div>
 
@@ -300,7 +321,7 @@ export default function Profile() {
               <div className="w-px h-4 bg-gray-100" />
               <button onClick={() => openFollowSheet('following')} className="flex flex-col items-center gap-0.5 active:opacity-60 transition-opacity">
                 <span className="text-sm font-bold text-gray-800">{following.length}</span>
-                <span className="text-gray-400" style={{ fontSize: '9px' }}>Followings</span>
+                <span className="text-gray-400" style={{ fontSize: '9px' }}>Following</span>
               </button>
             </div>
 
@@ -383,7 +404,7 @@ export default function Profile() {
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={() => setFollowSheet(tab.key)}
                   className="flex-1 py-3 text-sm font-semibold transition-colors"
-                  style={{ color: followSheet === tab.key ? '#1f2937' : '#9ca3af', borderBottom: followSheet === tab.key ? '2px solid #1f2937' : '2px solid transparent' }}
+                  style={{ color: followSheet === tab.key ? 'var(--text-primary, #1f2937)' : '#9ca3af', borderBottom: followSheet === tab.key ? '2px solid currentColor' : '2px solid transparent' }}
                 >
                   {tab.label}
                 </button>
@@ -473,7 +494,7 @@ export default function Profile() {
             )}
 
             <div className="flex-1" />
-            <button className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-red-400 hover:bg-red-50 transition-colors">
+            <button onClick={async () => { await logout(); navigate('/login') }} className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-red-400 hover:bg-red-50 transition-colors">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>

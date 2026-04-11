@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 import { useTheme, THEMES } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
 
 export default function Settings() {
   const navigate = useNavigate()
   const { themeId, setThemeId } = useTheme()
+  const { logout } = useAuth()
 
   return (
     <div className="min-h-screen">
@@ -103,7 +105,10 @@ export default function Settings() {
 
         {/* 로그아웃 */}
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--card-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--card-border)', boxShadow: 'var(--card-shadow)' }}>
-          <button className="w-full flex items-center px-5 py-3.5 text-left hover:bg-red-50 transition-colors">
+          <button
+            className="w-full flex items-center px-5 py-3.5 text-left hover:bg-red-50 transition-colors"
+            onClick={async () => { await logout(); navigate('/login') }}
+          >
             <span className="text-sm text-red-400">로그아웃</span>
           </button>
         </div>

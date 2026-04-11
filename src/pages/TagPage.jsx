@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useMemo } from 'react'
 import { usePosts } from '../context/PostsContext'
-import { SAMPLE_POSTS } from '../data/sampleUsers'
 import PostCard from '../components/PostCard'
 
 export default function TagPage() {
@@ -10,7 +9,7 @@ export default function TagPage() {
   const { posts } = usePosts()
 
   const taggedPosts = useMemo(() =>
-    [...posts, ...SAMPLE_POSTS]
+    posts
       .filter((p) => p.tags?.some((t) => t.toLowerCase() === tag.toLowerCase()))
       .sort((a, b) => new Date(b.date) - new Date(a.date))
   , [posts, tag])

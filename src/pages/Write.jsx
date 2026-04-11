@@ -132,14 +132,14 @@ export default function Write() {
     triggerAutoSave()
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title.trim()) return
     // 디바운스 타이머 취소 (제출 후 자동저장 방지)
     if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
     const contentHTML = editorRef.current?.innerHTML ?? ''
     const contentText = editorRef.current?.innerText ?? ''
     if (isEdit) {
-      updatePost(editPost.id, {
+      await updatePost(editPost.id, {
         title: title.trim(),
         content: contentHTML,
         excerpt: contentText.slice(0, 100).trim(),
@@ -147,7 +147,7 @@ export default function Write() {
       })
       navigate(`/post/${editPost.id}`)
     } else {
-      const newPost = addPost({
+      const newPost = await addPost({
         title: title.trim(),
         content: contentHTML,
         excerpt: contentText.slice(0, 100).trim(),
@@ -161,7 +161,7 @@ export default function Write() {
       })
       // 제출 성공 시 draft 삭제
       deleteDraft(sessionDraftId.current)
-      navigate(`/post/${newPost.id}`)
+      if (newPost) navigate(`/post/${newPost.id}`)
     }
   }
 

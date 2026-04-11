@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { POSTS } from '../data/posts'
+import { usePosts } from '../context/PostsContext'
 
 const bubbleCard = {
   background: 'var(--card-bg-light)',
@@ -65,7 +65,7 @@ function PostCard({ post }) {
               }}
             >
               <span className="text-gray-500 font-semibold" style={{ fontSize: '9px' }}>
-                {post.author[0].toUpperCase()}
+                {post.author?.[0]?.toUpperCase()}
               </span>
             </div>
             <span className="font-medium text-gray-500">{post.author}</span>
@@ -78,6 +78,8 @@ function PostCard({ post }) {
 }
 
 export default function Home() {
+  const { posts } = usePosts()
+
   return (
     <div className="max-w-3xl mx-auto px-5 py-12">
       <div className="mb-10">
@@ -88,9 +90,10 @@ export default function Home() {
       </div>
 
       <div className="grid gap-4">
-        {POSTS.map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
+        {posts.length === 0
+          ? <p className="text-sm text-gray-300 text-center py-10">글이 없습니다.</p>
+          : posts.map((post) => <PostCard key={post.id} post={post} />)
+        }
       </div>
     </div>
   )

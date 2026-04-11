@@ -1,24 +1,56 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 
 const ProfileContext = createContext(null)
 
-const STORAGE_KEY = 'bubblog_profile'
-
-function loadProfile() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    return saved ? JSON.parse(saved) : { name: 'ramram', bio: '', avatar: null }
-  } catch {
-    return { name: 'ramram', bio: '', avatar: null }
-  }
-}
+const DEFAULT_PROFILE = { id: '', name: '', bio: '', avatar: null }
 
 export function ProfileProvider({ children }) {
-  const [profile, setProfileState] = useState(loadProfile)
+  const [profile, setProfileState] = useState(DEFAULT_PROFILE)
 
-  const setProfile = (next) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  // 로그인된 유저 프로필 불러오기
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) fetchProfile(session.user.id)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) fetchProfile(session.user.id)
+      else setProfileState(DEFAULT_PROFILE)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const fetchProfile = async (userId) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('username, nickname, bio, avatar_url')
+      .eq('id', userId)
+      .single()
+
+    if (data) {
+      setProfileState({
+        id: data.username,
+        name: data.nickname,
+        bio: data.bio || '',
+        avatar: data.avatar_url || null,
+      })
+    }
+  }
+
+  const setProfile = async (next) => {
     setProfileState(next)
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) return
+
+    await supabase.from('profiles').update({
+      username: next.id,
+      nickname: next.name,
+      bio: next.bio,
+      avatar_url: next.avatar,
+    }).eq('id', session.user.id)
   }
 
   return (

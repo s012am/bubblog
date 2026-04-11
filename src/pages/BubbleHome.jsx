@@ -4,7 +4,6 @@ import { usePosts } from '../context/PostsContext'
 import { useProfile } from '../context/ProfileContext'
 import { useRebubble } from '../context/RebubbleContext'
 import { useFollow } from '../context/FollowContext'
-import { SAMPLE_USERS, SAMPLE_POSTS } from '../data/sampleUsers'
 import InfoSheet from '../components/InfoSheet'
 import PostCard from '../components/PostCard'
 
@@ -71,7 +70,7 @@ export default function BubbleHome() {
   const logCount = posts.filter((p) => p.type === 'log' || !p.type).length
   const followed = isFollowing(profile.name)
   const [infoOpen, setInfoOpen] = useState(false)
-  const [followListType, setFollowListType] = useState(null)
+
   const [activeTab, setActiveTab] = useState('drift')
   const [tick, setTick] = useState(0)
   const [fabOpen, setFabOpen] = useState(false)
@@ -91,9 +90,8 @@ export default function BubbleHome() {
     const w = el.clientWidth
     const h = el.clientHeight
     sizeRef.current = { w, h }
-    const allPosts = [...posts, ...SAMPLE_POSTS]
     const visiblePosts = activeTab === 'rebubbled'
-      ? allPosts.filter((p) => rebubbledIds.includes(p.id)).slice(0, 15)
+      ? posts.filter((p) => rebubbledIds.includes(p.id)).slice(0, 15)
       : posts.slice(0, 15)
     bubblesRef.current = initBubbles(w, h, visiblePosts)
   }, [posts, activeTab, rebubbledIds])
@@ -452,7 +450,7 @@ export default function BubbleHome() {
 
       {/* 버블 캔버스 */}
       {!showList && <div ref={containerRef} className="relative flex-1 overflow-hidden">
-        {activeTab === 'rebubbled' && [...posts, ...SAMPLE_POSTS].filter(p => rebubbledIds.includes(p.id)).length === 0 && (
+        {activeTab === 'rebubbled' && posts.filter(p => rebubbledIds.includes(p.id)).length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-sm text-gray-300 text-center leading-relaxed">
               마음에 드는 Bubble을<br/>탐색해 보세요.
@@ -612,59 +610,11 @@ export default function BubbleHome() {
           log={logCount}
           pop={popCount}
           followers={followed ? 1 : 0}
-          followings={following.length}
-          onFollowersClick={() => { setInfoOpen(false); setFollowListType('followers') }}
-          onFollowingsClick={() => { setInfoOpen(false); setFollowListType('followings') }}
+          following={following.length}
+          followerUsers={followed ? [{ name: profile.name, avatar: profile.avatar, bio: profile.bio }] : []}
+          followingUsers={following.map((n) => ({ name: n, avatar: null, bio: '', linkTo: `/user/${n}` }))}
           profileUrl={`${window.location.origin}/`}
         />
-      )}
-
-      {/* 팔로워/팔로잉 목록 바텀시트 */}
-      {followListType && (
-        <div
-          className="fixed inset-0 z-50 flex items-end"
-          style={{ background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(4px)' }}
-          onClick={() => setFollowListType(null)}
-        >
-          <div
-            className="w-full rounded-t-3xl px-6 pt-5 pb-24 flex flex-col gap-4"
-            style={{ background: 'white', boxShadow: '0 -4px 24px rgba(0,0,0,0.08)', maxHeight: '70vh', overflowY: 'auto' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto" />
-            <p className="text-sm font-bold text-gray-800">{followListType === 'followers' ? 'Followers' : 'Followings'}</p>
-            <div className="flex flex-col gap-3">
-              {followListType === 'followers' && (
-                followed
-                  ? <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,0,0,0.06)' }}>
-                        {profile.avatar ? <img src={profile.avatar} alt="avatar" className="w-full h-full object-cover" /> : <span className="text-sm font-bold text-gray-500">{profile.name[0].toUpperCase()}</span>}
-                      </div>
-                      <div><p className="text-sm font-semibold text-gray-800">{profile.name}</p>{profile.bio && <p className="text-xs text-gray-400">{profile.bio}</p>}</div>
-                    </div>
-                  : <p className="text-sm text-gray-300 text-center py-6">아직 팔로워가 없습니다.</p>
-              )}
-              {followListType === 'followings' && (
-                following.length === 0
-                  ? <p className="text-sm text-gray-300 text-center py-6">팔로우한 사람이 없습니다.</p>
-                  : following.map((name) => {
-                      const user = SAMPLE_USERS.find((u) => u.name === name)
-                      return (
-                        <Link key={name} to={`/user/${name}`} className="flex items-center gap-3" onClick={() => setFollowListType(null)}>
-                          <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,0,0,0.06)' }}>
-                            <span className="text-sm font-bold text-gray-500">{name[0].toUpperCase()}</span>
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-gray-800">{name}</p>
-                            {user?.bio && <p className="text-xs text-gray-400">{user.bio}</p>}
-                          </div>
-                        </Link>
-                      )
-                    })
-              )}
-            </div>
-          </div>
-        </div>
       )}
     </div>
   )
