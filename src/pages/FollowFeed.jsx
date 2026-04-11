@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
 import { useFollow } from '../context/FollowContext'
-import { supabase } from '../lib/supabase'
 
 const RADII = [65, 58, 54, 62]
 
@@ -108,26 +107,10 @@ export default function FollowFeed() {
   const didDragRef = useRef(false)
   const navigate = useNavigate()
   const { posts } = usePosts()
-  const { following } = useFollow()
+  const { following, followedProfiles, profilesLoaded } = useFollow()
   const [, setTick] = useState(0)
   const [, setIsDragging] = useState(false)
   const [flippedIds, setFlippedIds] = useState(new Set())
-  const [followedProfiles, setFollowedProfiles] = useState({}) // username → profile
-  const [profilesLoaded, setProfilesLoaded] = useState(false)
-
-  useEffect(() => {
-    if (following.length === 0) { setFollowedProfiles({}); setProfilesLoaded(true); return }
-    setProfilesLoaded(false)
-    supabase.from('profiles').select('id, username, nickname, avatar_url')
-      .in('username', following)
-      .then(({ data }) => {
-        if (!data) { setProfilesLoaded(true); return }
-        const map = {}
-        data.forEach(p => { map[p.username] = p })
-        setFollowedProfiles(map)
-        setProfilesLoaded(true)
-      })
-  }, [following])
 
   const feedPosts = useMemo(() => {
     // Build userId → profile map for rebubble attribution
