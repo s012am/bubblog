@@ -62,7 +62,7 @@ export default function BubbleHome() {
   const didDragRef = useRef(false)
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { posts, deletePost } = usePosts()
+  const { posts, deletePost, currentUserId } = usePosts()
   const { profile } = useProfile()
   const { rebubbledIds, toggle: toggleRebubble } = useRebubble()
   const { isFollowing, follow, unfollow, following } = useFollow()
@@ -92,9 +92,9 @@ export default function BubbleHome() {
     sizeRef.current = { w, h }
     const visiblePosts = activeTab === 'rebubbled'
       ? posts.filter((p) => rebubbledIds.includes(p.id)).slice(0, 15)
-      : posts.slice(0, 15)
+      : posts.filter((p) => p.authorId === currentUserId).slice(0, 15)
     bubblesRef.current = initBubbles(w, h, visiblePosts)
-  }, [posts, activeTab, rebubbledIds])
+  }, [posts, activeTab, rebubbledIds, currentUserId])
 
   useEffect(() => {
     reset()
