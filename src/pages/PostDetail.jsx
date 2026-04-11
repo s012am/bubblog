@@ -235,7 +235,7 @@ function CommentCard({ comment, onDelete, canDelete, onReply, onDeleteReply, pro
 }
 
 export default function PostDetail() {
-  const { posts, deletePost, addComment, deleteComment, addReply, deleteReply, toggleLike, isLiked, addRecentlyViewed } = usePosts()
+  const { posts, deletePost, addComment, deleteComment, addReply, deleteReply, toggleLike, isLiked, addRecentlyViewed, currentUserId } = usePosts()
   const { profile } = useProfile()
   const { toggle: toggleRebubble, isRebubbled } = useRebubble()
   const { toggleBookmark, isBookmarked } = useBookmark()
@@ -328,6 +328,7 @@ export default function PostDetail() {
   }, [id, post])
 
   const isSample = false
+  const isOwn = !!currentUserId && !!post && post.authorId === currentUserId
 
   if (notFound) {
     return (
@@ -400,7 +401,7 @@ export default function PostDetail() {
                   className="absolute right-0 top-9 z-50 w-28 rounded-xl overflow-hidden"
                   style={{ background: 'var(--dropdown-bg)', backdropFilter: 'blur(16px)', boxShadow: '0 4px 20px rgba(0,0,0,0.18)', border: '1px solid var(--divider)' }}
                 >
-                  {!isSample && (
+                  {isOwn && (
                     <>
                       <button
                         onClick={() => { setMenuOpen(false); navigate(`/write/edit/${post.id}`) }}
@@ -425,7 +426,15 @@ export default function PostDetail() {
                     공유
                   </button>
                   <div className="h-px bg-gray-100" />
-                  {isSample ? (
+                  {isOwn ? (
+                    <button
+                      onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}
+                      className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-50 transition-colors flex items-center gap-2.5"
+                    >
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5"><path d="M2 4h12M5 4V2h6v2M13 4l-.8 9.5a1 1 0 0 1-1 .9H4.8a1 1 0 0 1-1-.9L3 4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      삭제
+                    </button>
+                  ) : (
                     <>
                       <button
                         onClick={() => { setMenuOpen(false); toggleBookmark(post.id) }}
@@ -445,14 +454,6 @@ export default function PostDetail() {
                         신고
                       </button>
                     </>
-                  ) : (
-                    <button
-                      onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-50 transition-colors flex items-center gap-2.5"
-                    >
-                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5"><path d="M2 4h12M5 4V2h6v2M13 4l-.8 9.5a1 1 0 0 1-1 .9H4.8a1 1 0 0 1-1-.9L3 4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      삭제
-                    </button>
                   )}
                 </div>
               )}
@@ -472,15 +473,17 @@ export default function PostDetail() {
           )}
           {/* 프로필 */}
           <div className="flex items-center gap-3 mt-2">
-            <Link to={isSample ? `/user/${post.author}` : '/'} className="flex items-center gap-2 hover:opacity-70 transition-opacity min-w-0">
+            <Link to={isOwn ? '/' : `/user/${post.authorUsername || post.author}`} className="flex items-center gap-2 hover:opacity-70 transition-opacity min-w-0">
               <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
-                {!isSample && profile.avatar ? (
+                {isOwn && profile.avatar ? (
                   <img src={profile.avatar} alt="avatar" className="w-full h-full object-cover" />
+                ) : post.authorAvatar ? (
+                  <img src={post.authorAvatar} alt="avatar" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-gray-600 text-xs font-semibold">{(isSample ? post.author : profile.name)[0].toUpperCase()}</span>
+                  <span className="text-gray-600 text-xs font-semibold">{(post.author || '?')[0].toUpperCase()}</span>
                 )}
               </div>
-              <span className="text-sm font-semibold text-gray-700 truncate">{isSample ? post.author : profile.name}</span>
+              <span className="text-sm font-semibold text-gray-700 truncate">{post.author}</span>
             </Link>
             <span className="text-xs text-gray-400 flex-shrink-0">{formattedDate}</span>
             <div className="flex-1 h-px bg-gray-100" />
