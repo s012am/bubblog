@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
 import { useProfile } from '../context/ProfileContext'
-import { supabase } from '../lib/supabase'
 import { useDraft } from '../context/DraftContext'
 import { useFollow } from '../context/FollowContext'
 import { useTheme, THEMES } from '../context/ThemeContext'
@@ -136,7 +135,7 @@ export default function Profile() {
   const myPosts = posts.filter(p => p.authorId === currentUserId)
   const { profile, setProfile } = useProfile()
   const { drafts, deleteDraft } = useDraft()
-  const { followVersion } = useFollow()
+  const { followerUsers, followingUsers } = useFollow()
   const { logout } = useAuth()
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
@@ -174,34 +173,6 @@ export default function Profile() {
     else setFollowTranslate(0)
   }
 
-  const [followerUsers, setFollowerUsers] = useState([])
-  const [followingUsers, setFollowingUsers] = useState([])
-
-  useEffect(() => {
-    if (!currentUserId) return
-    const mapProfile = (p) => ({
-      name: p.nickname || p.username,
-      username: p.username,
-      avatar: p.avatar_url || null,
-      bio: p.bio || '',
-    })
-    ;(async () => {
-      const { data: fwrRows } = await supabase.from('follows').select('follower_id').eq('following_id', currentUserId)
-      if (fwrRows?.length > 0) {
-        const { data: fps } = await supabase.from('profiles').select('username, nickname, avatar_url, bio').in('id', fwrRows.map(r => r.follower_id))
-        setFollowerUsers((fps || []).map(mapProfile))
-      } else {
-        setFollowerUsers([])
-      }
-      const { data: fwgRows } = await supabase.from('follows').select('following_id').eq('follower_id', currentUserId)
-      if (fwgRows?.length > 0) {
-        const { data: fps } = await supabase.from('profiles').select('username, nickname, avatar_url, bio').in('id', fwgRows.map(r => r.following_id))
-        setFollowingUsers((fps || []).map(mapProfile))
-      } else {
-        setFollowingUsers([])
-      }
-    })()
-  }, [currentUserId, followVersion])
 
   const streak = calcStreak(myPosts)
 
