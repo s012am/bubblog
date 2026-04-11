@@ -93,7 +93,8 @@ export default function UserProfile() {
 
   useEffect(() => {
     supabase.from('profiles').select('username, nickname, bio, avatar_url').eq('username', name).single()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        console.log('[UserProfile] data:', data, 'error:', error)
         if (data) setUser({ name: data.username, nickname: data.nickname, bio: data.bio || '', avatar: data.avatar_url || null })
       })
   }, [name])
