@@ -339,7 +339,7 @@ export default function FollowFeed() {
       </div>
 
       {/* 버블 캔버스 */}
-      <div ref={containerRef} className="relative flex-1 overflow-hidden">
+      <div ref={containerRef} className="relative flex-1 overflow-hidden" style={{ transform: 'translateY(var(--ptr-y, 0px))', transition: 'transform 0.05s linear' }}>
         {following.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" className="w-12 h-12 text-gray-200">

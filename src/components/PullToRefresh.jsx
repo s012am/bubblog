@@ -46,8 +46,10 @@ export default function PullToRefresh() {
     const onTouchMove = (e) => {
       if (!pulling.current) return
       const dy = e.touches[0].clientY - startY.current
-      if (dy <= 0) { setPullY(0); return }
-      setPullY(Math.min(dy * 0.45, THRESHOLD + 16))
+      if (dy <= 0) { setPullY(0); document.documentElement.style.setProperty('--ptr-y', '0px'); return }
+      const y = Math.min(dy * 0.45, THRESHOLD + 16)
+      setPullY(y)
+      document.documentElement.style.setProperty('--ptr-y', y + 'px')
     }
 
     const onTouchEnd = () => {
@@ -58,6 +60,7 @@ export default function PullToRefresh() {
         setTimeout(() => window.location.reload(), 700)
       } else {
         setPullY(0)
+        document.documentElement.style.setProperty('--ptr-y', '0px')
       }
     }
 
