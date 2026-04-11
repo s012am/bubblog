@@ -113,16 +113,19 @@ export default function FollowFeed() {
   const [, setIsDragging] = useState(false)
   const [flippedIds, setFlippedIds] = useState(new Set())
   const [followedProfiles, setFollowedProfiles] = useState({}) // username → profile
+  const [profilesLoaded, setProfilesLoaded] = useState(false)
 
   useEffect(() => {
-    if (following.length === 0) { setFollowedProfiles({}); return }
+    if (following.length === 0) { setFollowedProfiles({}); setProfilesLoaded(true); return }
+    setProfilesLoaded(false)
     supabase.from('profiles').select('id, username, nickname, avatar_url')
       .in('username', following)
       .then(({ data }) => {
-        if (!data) return
+        if (!data) { setProfilesLoaded(true); return }
         const map = {}
         data.forEach(p => { map[p.username] = p })
         setFollowedProfiles(map)
+        setProfilesLoaded(true)
       })
   }, [following])
 
@@ -313,7 +316,7 @@ export default function FollowFeed() {
         </div>
 
         {/* 팔로잉 유저 줄 */}
-        {following.length > 0 && (
+        {following.length > 0 && profilesLoaded && (
           <div className="flex gap-4 px-5 pb-4 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
             {following.map((username) => {
               const p = followedProfiles[username]
