@@ -23,14 +23,21 @@ function formatRemaining(expiresAt) {
   return `${d}일`
 }
 
-// 포스트별 버블 크기
-const RADII = [65, 58, 54, 62]
+const MIN_R = 44
+const MAX_R = 92
+const BASE_R = 48
+const SCALE_R = 13
 
+function postRadius(post) {
+  const score = (post.likes?.length || 0) + (post.rebubbles?.length || 0)
+  const r = BASE_R + SCALE_R * Math.log(score + 1)
+  return Math.min(MAX_R, Math.max(MIN_R, Math.round(r)))
+}
 
 function initBubbles(w, h, posts) {
   const bubbles = []
   for (let i = 0; i < posts.length; i++) {
-    const r = RADII[i] ?? 58
+    const r = postRadius(posts[i])
     let x, y, tries = 0
     do {
       x = r + Math.random() * (w - r * 2)
