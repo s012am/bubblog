@@ -24,6 +24,7 @@ import Settings from './pages/Settings'
 import NotificationSettings from './pages/NotificationSettings'
 import PasswordChange from './pages/PasswordChange'
 import DeleteAccount from './pages/DeleteAccount'
+import BlockedUsers from './pages/BlockedUsers'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
 import OpenSource from './pages/OpenSource'
@@ -92,6 +93,7 @@ function AppInner() {
           <Route path="/settings/notifications" element={<PrivateRoute><NotificationSettings /></PrivateRoute>} />
           <Route path="/settings/password" element={<PrivateRoute><PasswordChange /></PrivateRoute>} />
           <Route path="/settings/delete-account" element={<PrivateRoute><DeleteAccount /></PrivateRoute>} />
+          <Route path="/settings/blocked" element={<PrivateRoute><BlockedUsers /></PrivateRoute>} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<Terms />} />

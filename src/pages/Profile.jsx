@@ -143,33 +143,9 @@ export default function Profile() {
   const [draft, setDraft] = useState(profile)
   const [menuOpen, setMenuOpen] = useState(false)
   const [draftDeleteId, setDraftDeleteId] = useState(null)
-  const [blockSheet, setBlockSheet] = useState(false)
-  const [blockedUsers, setBlockedUsers] = useState([])
-  const [blockLoading, setBlockLoading] = useState(false)
-
-  const openBlockSheet = async () => {
+  const openBlockPage = () => {
     setMenuOpen(false)
-    setBlockSheet(true)
-    setBlockLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setBlockLoading(false); return }
-    const { data: rows } = await supabase.from('blocks').select('blocked_id, profiles!blocks_blocked_id_fkey(username, nickname, avatar_url, bio)').eq('blocker_id', user.id)
-    setBlockedUsers((rows || []).map(r => ({
-      id: r.blocked_id,
-      username: r.profiles?.username || '',
-      name: r.profiles?.nickname || r.profiles?.username || '',
-      avatar: r.profiles?.avatar_url || null,
-      bio: r.profiles?.bio || '',
-    })))
-    setBlockLoading(false)
-  }
-
-  const handleUnblock = async (blockedId) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('blocks').delete().eq('blocker_id', user.id).eq('blocked_id', blockedId)
-    setBlockedUsers(prev => prev.filter(u => u.id !== blockedId))
-    refreshBlockedIds()
+    navigate('/settings/blocked')
   }
   const [followSheet, setFollowSheet] = useState(null) // 'followers' | 'following' | null
   const [followTranslate, setFollowTranslate] = useState(40)
@@ -494,7 +470,7 @@ export default function Profile() {
               </button>
             ))}
             <button
-              onClick={openBlockSheet}
+              onClick={openBlockPage}
               className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4 text-gray-400">
@@ -540,54 +516,6 @@ export default function Profile() {
             </button>
           </div>
         </div>
-      )}
-
-      {/* 차단 목록 바텀시트 */}
-      {blockSheet && (
-        <>
-          <div className="fixed inset-0 z-50" style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }} onClick={() => setBlockSheet(false)} />
-          <div className="fixed left-0 right-0 bottom-0 z-50 rounded-t-3xl flex flex-col" style={{ height: '70vh', background: 'var(--sheet-bg)', backdropFilter: 'blur(20px)', boxShadow: '0 -4px 30px rgba(0,0,0,0.2)' }}>
-            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-              <div className="w-10 h-1 rounded-full bg-gray-200" />
-            </div>
-            <div className="px-5 py-3 flex items-center justify-between flex-shrink-0" style={{ borderBottom: '1px solid var(--divider)' }}>
-              <p className="text-base font-bold text-gray-800">차단 목록</p>
-              <button onClick={() => setBlockSheet(false)} className="w-7 h-7 flex items-center justify-center rounded-full text-gray-400" style={{ background: 'var(--input-bg)' }}>
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
-                  <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round"/>
-                </svg>
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 px-5 py-3 pb-10">
-              {blockLoading ? (
-                <div className="flex justify-center py-10">
-                  <svg className="w-5 h-5 text-gray-300 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round"/>
-                  </svg>
-                </div>
-              ) : blockedUsers.length === 0 ? (
-                <p className="text-sm text-gray-300 text-center py-10">차단한 사용자가 없습니다.</p>
-              ) : blockedUsers.map((u) => (
-                <div key={u.id} className="flex items-center gap-3 py-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--avatar-bg)' }}>
-                    {u.avatar ? <img src={u.avatar} alt={u.name} className="w-full h-full object-cover rounded-full" /> : <span className="text-sm font-bold text-gray-500">{u.name[0]?.toUpperCase()}</span>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800">{u.name}</p>
-                    {u.username && <p className="text-xs text-gray-400">@{u.username}</p>}
-                  </div>
-                  <button
-                    onClick={() => handleUnblock(u.id)}
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
-                    style={{ background: 'var(--input-bg)', color: '#6b7280', border: '1px solid var(--divider)' }}
-                  >
-                    차단 해제
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
       )}
 
       {/* 임시저장 삭제 확인 다이얼로그 */}
