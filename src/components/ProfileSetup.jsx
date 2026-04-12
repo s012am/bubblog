@@ -109,7 +109,7 @@ export default function ProfileSetup() {
           onClick={handleSave}
           disabled={loading || !nickname.trim()}
           className="w-full py-3.5 rounded-2xl text-sm font-bold text-white transition-opacity disabled:opacity-40"
-          style={{ background: 'var(--accent)' }}
+          style={{ background: color }}
         >
           {loading ? '저장 중...' : '시작하기'}
         </button>
