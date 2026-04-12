@@ -427,7 +427,7 @@ export default function PostDetail() {
   const nextPost = currentIndex > 0 ? (navPosts[currentIndex - 1] ?? null) : null
 
   return (
-    <div>
+    <>
       {/* 본문 영역 */}
       <div style={{ background: 'var(--dialog-bg)' }}>
         <div className="max-w-3xl mx-auto px-5 pt-8 pb-10 space-y-5 relative">
@@ -831,7 +831,6 @@ export default function PostDetail() {
 
       </div>
     </div>
-
     {/* 좋아요/리버블 목록 시트 */}
     {reactionsSheet && (
       <>
@@ -878,5 +877,6 @@ export default function PostDetail() {
         </div>
       </>
     )}
+    </>
   )
 }
