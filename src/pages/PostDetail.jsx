@@ -830,7 +830,6 @@ export default function PostDetail() {
         </button>
 
       </div>
-    </div>
     {/* 좋아요/리버블 목록 시트 */}
     {reactionsSheet && (
       <>
