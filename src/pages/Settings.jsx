@@ -166,7 +166,7 @@ export default function Settings() {
       {/* 알림 설정 시트 */}
       {showNotifSheet && (
         <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }} onClick={() => setShowNotifSheet(false)}>
-          <div className="w-full max-w-lg rounded-t-3xl px-5 pt-5 pb-10 flex flex-col gap-1" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }} onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg rounded-t-3xl px-5 pt-5 pb-24 flex flex-col gap-1" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <p className="text-base font-bold text-gray-800">알림 설정</p>
               <button onClick={() => setShowNotifSheet(false)} className="w-7 h-7 flex items-center justify-center rounded-full text-gray-400" style={{ background: 'var(--input-bg)' }}>
