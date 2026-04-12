@@ -5,18 +5,18 @@ import { useTheme } from '../context/ThemeContext'
 const BUBBLES = [
   {
     id: 'large',
-    circle: { cx: 12, cy: 16, r: 5, strokeWidth: 0.8 },
-    shine: { cx: 9.9, cy: 13.9, rx: 1.6, ry: 0.9, transform: 'rotate(-30 9.9 13.9)' },
+    circle: { cx: 8, cy: 15, r: 5, strokeWidth: 0.8 },
+    shine: { cx: 5.9, cy: 12.9, rx: 1.6, ry: 0.9, transform: 'rotate(-30 5.9 12.9)' },
   },
   {
     id: 'medium',
-    circle: { cx: 6, cy: 8, r: 3, strokeWidth: 0.72 },
-    shine: { cx: 4.9, cy: 6.9, rx: 0.9, ry: 0.5, transform: 'rotate(-30 4.9 6.9)' },
+    circle: { cx: 18, cy: 7, r: 3, strokeWidth: 0.72 },
+    shine: { cx: 16.9, cy: 5.9, rx: 0.9, ry: 0.5, transform: 'rotate(-30 16.9 5.9)' },
   },
   {
     id: 'small',
-    circle: { cx: 18.5, cy: 10, r: 1.8, strokeWidth: 0.66 },
-    shine: { cx: 17.8, cy: 9.3, rx: 0.55, ry: 0.32, transform: 'rotate(-30 17.8 9.3)' },
+    circle: { cx: 19.5, cy: 17.5, r: 1.8, strokeWidth: 0.66 },
+    shine: { cx: 18.8, cy: 16.8, rx: 0.55, ry: 0.32, transform: 'rotate(-30 18.8 16.8)' },
   },
 ]
 
