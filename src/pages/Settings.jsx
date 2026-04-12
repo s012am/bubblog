@@ -67,7 +67,6 @@ export default function Settings() {
           {[
             { label: '알림 설정', sub: '', to: '/settings/notifications' },
             { label: '비밀번호 변경', sub: '', to: '/settings/password' },
-            { label: '차단 목록', sub: '', to: '/settings/blocked' },
             { label: '개인정보 처리방침', sub: '', to: '/privacy' },
             { label: '이용약관', sub: '', to: '/terms' },
             { label: '오픈소스 라이선스', sub: '', to: '/opensource' },
