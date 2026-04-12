@@ -145,6 +145,16 @@ export default function Write() {
     triggerAutoSave()
   }
 
+  const handlePaste = (e) => {
+    const text = e.clipboardData.getData('text/plain').trim()
+    if (/^https?:\/\/\S+$/.test(text)) {
+      e.preventDefault()
+      document.execCommand('insertHTML', false,
+        `<a href="${text}" target="_blank" rel="noopener noreferrer" style="text-decoration:underline;word-break:break-all;">${text}</a>`)
+      triggerAutoSave()
+    }
+  }
+
   const handleEditorClick = (e) => {
     if (e.target.tagName === 'IMG') {
       const img = e.target
@@ -407,6 +417,7 @@ export default function Write() {
             contentEditable
             suppressContentEditableWarning
             onInput={handleInput}
+            onPaste={handlePaste}
             onClick={handleEditorClick}
             className="write-editor min-h-64 w-full text-sm text-gray-700 bg-transparent focus:outline-none leading-relaxed"
           />
