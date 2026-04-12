@@ -23,10 +23,10 @@ function formatRemaining(expiresAt) {
   return `${d}일`
 }
 
-const MIN_R = 44
+const MIN_R = 40
 const MAX_R = 92
-const BASE_R = 48
-const SCALE_R = 13
+const BASE_R = 42
+const SCALE_R = 6
 
 function postRadius(post) {
   const score = (post.likes?.length || 0) + (post.rebubbles?.length || 0)
