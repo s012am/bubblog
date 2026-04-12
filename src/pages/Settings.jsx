@@ -2,15 +2,12 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme, THEMES } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { useNotification } from '../context/NotificationContext'
 import { supabase } from '../lib/supabase'
 
 export default function Settings() {
   const navigate = useNavigate()
   const { themeId, setThemeId } = useTheme()
   const { logout, session } = useAuth()
-  const { prefs, updatePref } = useNotification()
-  const [showNotifSheet, setShowNotifSheet] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showPwSheet, setShowPwSheet] = useState(false)
@@ -120,14 +117,14 @@ export default function Settings() {
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--card-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--card-border)', boxShadow: 'var(--card-shadow)' }}>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest px-5 pt-4 pb-2">앱</p>
           {[
-            { label: '알림 설정', sub: '', onPress: () => setShowNotifSheet(true) },
+            { label: '알림 설정', sub: '', to: '/settings/notifications' },
             { label: '개인정보 처리방침', sub: '', to: '/privacy' },
             { label: '이용약관', sub: '', to: '/terms' },
             { label: '오픈소스 라이선스', sub: '', to: '/opensource' },
             { label: '앱 버전', sub: '0.1.0' },
           ].map((item, i, arr) => (
             <div key={item.label}>
-              <button onClick={() => item.onPress ? item.onPress() : item.to && navigate(item.to)} className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50 transition-colors">
+              <button onClick={() => item.to && navigate(item.to)} className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50 transition-colors">
                 <span className="text-sm text-gray-700">{item.label}</span>
                 <div className="flex items-center gap-2">
                   {item.sub && <span className="text-xs text-gray-400">{item.sub}</span>}
@@ -162,49 +159,6 @@ export default function Settings() {
         </div>
 
       </div>
-
-      {/* 알림 설정 시트 */}
-      {showNotifSheet && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }} onClick={() => setShowNotifSheet(false)}>
-          <div className="w-full max-w-lg rounded-t-3xl px-5 pt-5 pb-24 flex flex-col gap-1" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-base font-bold text-gray-800">알림 설정</p>
-              <button onClick={() => setShowNotifSheet(false)} className="w-7 h-7 flex items-center justify-center rounded-full text-gray-400" style={{ background: 'var(--input-bg)' }}>
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
-                  <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round"/>
-                </svg>
-              </button>
-            </div>
-            {[
-              { key: 'like',     label: '좋아요',  desc: '내 글에 좋아요가 달릴 때' },
-              { key: 'rebubble', label: '리버블',  desc: '내 글이 리버블될 때' },
-              { key: 'follow',   label: '팔로우',  desc: '누군가 나를 팔로우할 때' },
-              { key: 'comment',  label: '댓글',    desc: '내 글에 댓글이 달릴 때' },
-              { key: 'reply',    label: '답글',    desc: '내 댓글에 답글이 달릴 때' },
-            ].map(({ key, label, desc }, i, arr) => (
-              <div key={key}>
-                <div className="flex items-center justify-between py-3.5 px-1">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">{label}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
-                  </div>
-                  <button
-                    onClick={() => updatePref(key, !prefs[key])}
-                    className="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200"
-                    style={{ background: prefs[key] !== false ? '#22c55e' : '#e5e7eb' }}
-                  >
-                    <div
-                      className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200"
-                      style={{ transform: prefs[key] !== false ? 'translateX(21px)' : 'translateX(2px)' }}
-                    />
-                  </button>
-                </div>
-                {i < arr.length - 1 && <div className="h-px bg-gray-100" />}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* 비밀번호 변경 바텀시트 */}
       {showPwSheet && (

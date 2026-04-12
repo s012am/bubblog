@@ -21,6 +21,7 @@ import Bookmarks from './pages/Bookmarks'
 import Stats from './pages/Stats'
 import Activity from './pages/Activity'
 import Settings from './pages/Settings'
+import NotificationSettings from './pages/NotificationSettings'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
 import OpenSource from './pages/OpenSource'
@@ -86,6 +87,7 @@ function AppInner() {
           <Route path="/stats" element={<PrivateRoute><Stats /></PrivateRoute>} />
           <Route path="/activity" element={<PrivateRoute><Activity /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+          <Route path="/settings/notifications" element={<PrivateRoute><NotificationSettings /></PrivateRoute>} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<Terms />} />
