@@ -11,6 +11,14 @@ const NOTIF_SELECT = `
   comment:comment_id (content)
 `
 
+const PREFS_KEY = 'bubblog_notif_prefs'
+const DEFAULT_PREFS = { like: true, rebubble: true, follow: true, comment: true, reply: true }
+
+function loadPrefs() {
+  try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') } }
+  catch { return { ...DEFAULT_PREFS } }
+}
+
 function mapNotif(raw) {
   return {
     id: raw.id,
@@ -27,7 +35,16 @@ function mapNotif(raw) {
 export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([])
   const [currentUserId, setCurrentUserId] = useState(null)
+  const [prefs, setPrefs] = useState(loadPrefs)
   const channelRef = useRef(null)
+
+  const updatePref = (key, value) => {
+    setPrefs((prev) => {
+      const next = { ...prev, [key]: value }
+      localStorage.setItem(PREFS_KEY, JSON.stringify(next))
+      return next
+    })
+  }
 
   // 로그인 상태 감지
   useEffect(() => {
@@ -55,7 +72,6 @@ export function NotificationProvider({ children }) {
   useEffect(() => {
     fetchNotifications(currentUserId)
 
-    // 이전 채널 정리
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current)
       channelRef.current = null
@@ -74,14 +90,17 @@ export function NotificationProvider({ children }) {
           filter: `user_id=eq.${currentUserId}`,
         },
         async (payload) => {
-          // 새 알림: actor 정보 포함해서 다시 fetch
           const { data } = await supabase
             .from('notifications')
             .select(NOTIF_SELECT)
             .eq('id', payload.new.id)
             .single()
           if (data) {
-            setNotifications((prev) => [mapNotif(data), ...prev])
+            const notif = mapNotif(data)
+            const currentPrefs = loadPrefs()
+            if (currentPrefs[notif.type] !== false) {
+              setNotifications((prev) => [notif, ...prev])
+            }
           }
         }
       )
@@ -95,7 +114,8 @@ export function NotificationProvider({ children }) {
     }
   }, [currentUserId, fetchNotifications])
 
-  const unreadCount = notifications.filter((n) => !n.read).length
+  const visibleNotifications = notifications.filter((n) => prefs[n.type] !== false)
+  const unreadCount = visibleNotifications.filter((n) => !n.read).length
 
   async function markRead(id) {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n))
@@ -114,7 +134,7 @@ export function NotificationProvider({ children }) {
   }
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, markRead, markAllRead, deleteNotification }}>
+    <NotificationContext.Provider value={{ notifications: visibleNotifications, unreadCount, markRead, markAllRead, deleteNotification, prefs, updatePref }}>
       {children}
     </NotificationContext.Provider>
   )
