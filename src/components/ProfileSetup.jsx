@@ -47,8 +47,8 @@ export default function ProfileSetup() {
       className="fixed inset-0 z-50 flex flex-col items-center justify-center px-8"
       style={{ background: 'var(--bg)' }}
     >
-      <div className="w-full max-w-sm flex flex-col gap-6">
-        <div className="flex flex-col items-center gap-2">
+      <div className="w-full max-w-sm flex flex-col gap-4">
+        <div className="flex flex-col items-center gap-1">
           <svg width="120" height="120" viewBox="0 0 24 24" fill="none" overflow="visible">
             {BUBBLES.map(({ id, circle, shine }) => (
               <g key={id}>
