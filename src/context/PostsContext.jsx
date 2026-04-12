@@ -5,9 +5,14 @@ const PostsContext = createContext(null)
 
 const RECENT_KEY = 'bubblog_recent'
 const MAX_RECENT = 20
+const POSTS_CACHE_KEY = 'bubblog_posts_v1'
 
 function loadRecent() {
   try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') } catch { return [] }
+}
+
+function loadCachedPosts() {
+  try { return JSON.parse(localStorage.getItem(POSTS_CACHE_KEY) || '[]') } catch { return [] }
 }
 
 function mapPost(raw) {
@@ -64,7 +69,7 @@ const POST_SELECT = `
 `
 
 export function PostsProvider({ children }) {
-  const [posts, setPosts] = useState([])
+  const [posts, setPosts] = useState(loadCachedPosts)
   const [currentUserId, setCurrentUserId] = useState(null)
   const [recentlyViewed, setRecentlyViewed] = useState(loadRecent)
   const [blockedIds, setBlockedIds] = useState(new Set())
@@ -84,7 +89,9 @@ export function PostsProvider({ children }) {
 
     if (!error && data) {
       const now = Date.now()
-      setPosts(data.map(mapPost).filter(p => !p.expiresAt || p.expiresAt > now))
+      const fresh = data.map(mapPost).filter(p => !p.expiresAt || p.expiresAt > now)
+      setPosts(fresh)
+      try { localStorage.setItem(POSTS_CACHE_KEY, JSON.stringify(fresh.slice(0, 40))) } catch {}
     }
   }, [])
 
@@ -97,7 +104,7 @@ export function PostsProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setCurrentUserId(session?.user?.id || null)
       if (session?.user) { fetchBlockedIds(); fetchPosts() }
-      else { setPosts([]); setBlockedIds(new Set()) }
+      else { setPosts([]); setBlockedIds(new Set()); localStorage.removeItem(POSTS_CACHE_KEY) }
     })
 
     return () => subscription.unsubscribe()

@@ -21,42 +21,26 @@ export function FollowProvider({ children }) {
   const [followVersion, setFollowVersion] = useState(0)
 
   const fetchFollowing = useCallback(async (userId) => {
-    const { data: rows } = await supabase
-      .from('follows')
-      .select('following_id')
-      .eq('follower_id', userId)
+    const [{ data: followingData }, { data: followerData }] = await Promise.all([
+      supabase.from('follows')
+        .select('profiles!following_id(id, username, nickname, avatar_url, bio)')
+        .eq('follower_id', userId),
+      supabase.from('follows')
+        .select('profiles!follower_id(username, nickname, avatar_url, bio)')
+        .eq('following_id', userId),
+    ])
 
-    if (!rows || rows.length === 0) {
-      setFollowing([])
-      setFollowedProfiles({})
-      setFollowingUsers([])
-      setProfilesLoaded(true)
-    } else {
-      const ids = rows.map(r => r.following_id)
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username, nickname, avatar_url, bio')
-        .in('id', ids)
+    const followingProfiles = (followingData || []).map(r => r.profiles).filter(Boolean)
+    const followerProfiles = (followerData || []).map(r => r.profiles).filter(Boolean)
 
-      const map = {}
-      ;(profiles || []).forEach(p => { map[p.username] = p })
-      setFollowing((profiles || []).map(p => p.username))
-      setFollowedProfiles(map)
-      setFollowingUsers((profiles || []).map(mapProfile))
-      setProfilesLoaded(true)
-    }
+    const map = {}
+    followingProfiles.forEach(p => { map[p.username] = p })
 
-    // 팔로워 목록도 함께 fetch
-    const { data: fwrRows } = await supabase
-      .from('follows').select('follower_id').eq('following_id', userId)
-    if (fwrRows?.length > 0) {
-      const { data: fps } = await supabase
-        .from('profiles').select('username, nickname, avatar_url, bio')
-        .in('id', fwrRows.map(r => r.follower_id))
-      setFollowerUsers((fps || []).map(mapProfile))
-    } else {
-      setFollowerUsers([])
-    }
+    setFollowing(followingProfiles.map(p => p.username))
+    setFollowedProfiles(map)
+    setFollowingUsers(followingProfiles.map(mapProfile))
+    setFollowerUsers(followerProfiles.map(mapProfile))
+    setProfilesLoaded(true)
   }, [])
 
   useEffect(() => {
