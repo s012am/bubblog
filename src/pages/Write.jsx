@@ -296,7 +296,7 @@ export default function Write() {
           {/* 직접 설정 */}
           <div className="relative flex-shrink-0">
             <button
-              onClick={() => { setExpiry('custom'); dateInputRef.current?.showPicker?.() }}
+              onClick={() => setExpiry('custom')}
               className="px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap"
               style={{
                 background: expiry === 'custom' ? 'rgba(30,30,30,0.85)' : 'rgba(0,0,0,0.04)',
@@ -318,6 +318,7 @@ export default function Write() {
               value={customDate}
               min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
               onChange={(e) => { setCustomDate(e.target.value); setExpiry('custom') }}
+              onClick={() => setExpiry('custom')}
               className="absolute inset-0 opacity-0 cursor-pointer"
               style={{ accentColor: '#6b7280' }}
             />
