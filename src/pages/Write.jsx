@@ -133,6 +133,13 @@ export default function Write() {
     triggerAutoSave()
   }
 
+  const handleEditorClick = (e) => {
+    if (e.target.tagName === 'IMG') {
+      const img = e.target
+      img.style.borderRadius = img.style.borderRadius === '12px' ? '0px' : '12px'
+    }
+  }
+
   const handleSubmit = async () => {
     if (!title.trim()) return
     // 디바운스 타이머 취소 (제출 후 자동저장 방지)
@@ -188,7 +195,7 @@ export default function Write() {
           canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
           const compressed = canvas.toDataURL('image/jpeg', 0.75)
           editorRef.current?.focus()
-          document.execCommand('insertHTML', false, `<img src="${compressed}" style="max-width:100%;border-radius:12px;margin:8px 0;display:block;" />`)
+          document.execCommand('insertHTML', false, `<img src="${compressed}" style="max-width:100%;border-radius:0px;margin:8px 0;display:block;" />`)
           setHasContent(true)
           triggerAutoSave()
         }
@@ -387,6 +394,7 @@ export default function Write() {
             contentEditable
             suppressContentEditableWarning
             onInput={handleInput}
+            onClick={handleEditorClick}
             className="write-editor min-h-64 w-full text-sm text-gray-700 bg-transparent focus:outline-none leading-relaxed"
           />
         </div>
