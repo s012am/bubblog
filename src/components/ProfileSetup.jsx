@@ -1,8 +1,33 @@
 import { useState } from 'react'
 import { useProfile } from '../context/ProfileContext'
+import { useTheme } from '../context/ThemeContext'
+
+const BUBBLES = [
+  {
+    id: 'large',
+    circle: { cx: 12, cy: 16, r: 5, strokeWidth: 0.8 },
+    shine: { cx: 9.9, cy: 13.9, rx: 1.6, ry: 0.9, transform: 'rotate(-30 9.9 13.9)' },
+  },
+  {
+    id: 'medium',
+    circle: { cx: 6, cy: 8, r: 3, strokeWidth: 0.72 },
+    shine: { cx: 4.9, cy: 6.9, rx: 0.9, ry: 0.5, transform: 'rotate(-30 4.9 6.9)' },
+  },
+  {
+    id: 'small',
+    circle: { cx: 18.5, cy: 10, r: 1.8, strokeWidth: 0.66 },
+    shine: { cx: 17.8, cy: 9.3, rx: 0.55, ry: 0.32, transform: 'rotate(-30 17.8 9.3)' },
+  },
+]
+
+const THEME_COLORS = { rose: '#e89ec4', warm: '#f2b882', sage: '#6ec48a', cool: '#818cf8' }
 
 export default function ProfileSetup() {
   const { profile, setProfile } = useProfile()
+  const { themeId } = useTheme()
+  const isDark = themeId === 'dark'
+  const color = isDark ? '#f3f4f6' : (THEME_COLORS[themeId] ?? '#1f2937')
+
   const [nickname, setNickname] = useState('')
   const [bio, setBio] = useState('')
   const [error, setError] = useState('')
@@ -23,10 +48,34 @@ export default function ProfileSetup() {
       style={{ background: 'var(--bg)' }}
     >
       <div className="w-full max-w-sm flex flex-col gap-6">
-        <div className="text-center">
-          <div className="text-3xl mb-2">🫧</div>
-          <h1 className="text-xl font-extrabold text-gray-800">프로필 설정</h1>
-          <p className="text-sm text-gray-400 mt-1">다른 사람들에게 보여질 닉네임을 설정해주세요.</p>
+        <div className="flex flex-col items-center gap-2">
+          <svg width="120" height="120" viewBox="0 0 24 24" fill="none" overflow="visible">
+            {BUBBLES.map(({ id, circle, shine }) => (
+              <g key={id}>
+                <circle
+                  cx={circle.cx} cy={circle.cy} r={circle.r}
+                  stroke={color} strokeWidth={circle.strokeWidth}
+                />
+                <ellipse
+                  cx={shine.cx} cy={shine.cy}
+                  rx={shine.rx} ry={shine.ry}
+                  fill={color} opacity="0.2"
+                  transform={shine.transform}
+                />
+              </g>
+            ))}
+          </svg>
+          <span style={{
+            fontFamily: "'Fraunces', serif",
+            fontWeight: 600,
+            fontSize: '28px',
+            letterSpacing: '-0.02em',
+            color,
+            lineHeight: 1,
+          }}>
+            Bubblog
+          </span>
+          <p className="text-sm text-gray-400 mt-1">닉네임을 설정하고 시작해보세요.</p>
         </div>
 
         <div className="flex flex-col gap-3">
