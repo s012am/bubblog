@@ -87,16 +87,17 @@ function BubbleNode({ b, isDragging, onClick, onMouseDown, onTouchStart }) {
 export default function UserProfile() {
   const { name } = useParams()
   const navigate = useNavigate()
-  const { posts: myPosts } = usePosts()
-  const { isFollowing, follow, unfollow, followVersion } = useFollow()
+  const { posts: myPosts, refreshBlockedIds } = usePosts()
+  const { isFollowing, follow, unfollow, followVersion, followedProfiles } = useFollow()
 
   const cachedPost = useMemo(() => myPosts.find(p => p.authorUsername === name), [myPosts, name])
+  const cachedProfile = followedProfiles[name]
   const [user, setUser] = useState(() => ({
     name,
-    nickname: cachedPost?.author || null,
-    bio: '',
-    avatar: cachedPost?.authorAvatar || null,
-    loaded: false,
+    nickname: cachedPost?.author || cachedProfile?.nickname || null,
+    bio: cachedProfile?.bio || '',
+    avatar: cachedPost?.authorAvatar || cachedProfile?.avatar || null,
+    loaded: !!cachedProfile,
   }))
 
   const [profileId, setProfileId] = useState(null)
@@ -487,6 +488,8 @@ export default function UserProfile() {
           following={followingUsers.length}
           followerUsers={followerUsers}
           followingUsers={followingUsers}
+          targetUserId={profileId}
+          onBlockChange={refreshBlockedIds}
           profileUrl={`${window.location.origin}/user/${name}`}
         />
       )}

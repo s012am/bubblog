@@ -67,6 +67,14 @@ export function PostsProvider({ children }) {
   const [posts, setPosts] = useState([])
   const [currentUserId, setCurrentUserId] = useState(null)
   const [recentlyViewed, setRecentlyViewed] = useState(loadRecent)
+  const [blockedIds, setBlockedIds] = useState(new Set())
+
+  const fetchBlockedIds = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase.from('blocks').select('blocked_id').eq('blocker_id', user.id)
+    setBlockedIds(new Set((data || []).map(r => r.blocked_id)))
+  }, [])
 
   const fetchPosts = useCallback(async () => {
     const { data, error } = await supabase
@@ -83,13 +91,13 @@ export function PostsProvider({ children }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setCurrentUserId(session?.user?.id || null)
-      if (session?.user) fetchPosts()
+      if (session?.user) { fetchBlockedIds(); fetchPosts() }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setCurrentUserId(session?.user?.id || null)
-      if (session?.user) fetchPosts()
-      else setPosts([])
+      if (session?.user) { fetchBlockedIds(); fetchPosts() }
+      else { setPosts([]); setBlockedIds(new Set()) }
     })
 
     return () => subscription.unsubscribe()
@@ -287,8 +295,12 @@ export function PostsProvider({ children }) {
     }))
   }
 
+  const visiblePosts = blockedIds.size > 0
+    ? posts.filter(p => !p.authorId || !blockedIds.has(p.authorId))
+    : posts
+
   return (
-    <PostsContext.Provider value={{ posts, currentUserId, addPost, updatePost, deletePost, renameAuthor, addComment, deleteComment, addReply, deleteReply, incrementView, toggleLike, isLiked, toggleRebubble, isRebubbled, rebubbledIds, recentlyViewed, addRecentlyViewed }}>
+    <PostsContext.Provider value={{ posts: visiblePosts, currentUserId, addPost, updatePost, deletePost, renameAuthor, addComment, deleteComment, addReply, deleteReply, incrementView, toggleLike, isLiked, toggleRebubble, isRebubbled, rebubbledIds, recentlyViewed, addRecentlyViewed, refreshBlockedIds: fetchBlockedIds }}>
       {children}
     </PostsContext.Provider>
   )

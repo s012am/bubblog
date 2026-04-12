@@ -247,6 +247,20 @@ export default function PostDetail() {
   const [commentDragging, setCommentDragging] = useState(false)
   const dragStartY = useRef(0)
   const dragStartTranslate = useRef(40)
+  const [reactionsSheet, setReactionsSheet] = useState(null) // { type: 'likes'|'rebubbles', users: [] }
+  const longPressTimer = useRef(null)
+
+  const openReactions = async (type) => {
+    const ids = type === 'likes' ? (post?.likes || []) : (post?.rebubbles || [])
+    if (ids.length === 0) { setReactionsSheet({ type, users: [] }); return }
+    const { data } = await supabase.from('profiles').select('username, nickname, avatar_url, bio').in('id', ids)
+    setReactionsSheet({ type, users: (data || []).map(p => ({ username: p.username, name: p.nickname || p.username, avatar: p.avatar_url, bio: p.bio })) })
+  }
+
+  const startLongPress = (type) => {
+    longPressTimer.current = setTimeout(() => { haptic(20); openReactions(type) }, 500)
+  }
+  const cancelLongPress = () => { clearTimeout(longPressTimer.current) }
 
   useEffect(() => {
     if (showComments) setCommentTranslate(40)
@@ -294,6 +308,7 @@ export default function PostDetail() {
   }, [reportDone])
   const [fetchedPost, setFetchedPost] = useState(null)
   const [notFound, setNotFound] = useState(false)
+  const [authorPosts, setAuthorPosts] = useState(null)
 
   const postFromCtx = posts.find((p) => String(p.id) === String(id))
   const post = postFromCtx ?? fetchedPost
@@ -360,6 +375,18 @@ export default function PostDetail() {
       })
   }, [id, post])
 
+  // 작성자의 다른 글 목록 (이전/다음 네비게이션용)
+  useEffect(() => {
+    if (!post) return
+    const ctxAuthorPosts = posts.filter((p) => p.authorId === post.authorId)
+    if (ctxAuthorPosts.length > 0) {
+      setAuthorPosts(ctxAuthorPosts)
+    } else {
+      supabase.from('posts').select('id, title, created_at').eq('author_id', post.authorId).order('created_at', { ascending: false }).limit(50)
+        .then(({ data }) => { if (data) setAuthorPosts(data.map(p => ({ id: p.id, title: p.title, date: p.created_at }))) })
+    }
+  }, [post?.authorId])
+
   const isSample = false
   const isOwn = !!currentUserId && !!post && post.authorId === currentUserId
 
@@ -394,10 +421,10 @@ export default function PostDetail() {
   const _d = new Date(post.date)
   const formattedDate = `${_d.getFullYear()} · ${String(_d.getMonth() + 1).padStart(2, '0')} · ${String(_d.getDate()).padStart(2, '0')} · ${String(_d.getHours()).padStart(2, '0')}:${String(_d.getMinutes()).padStart(2, '0')}`
 
-  const myPosts = posts.filter((p) => p.authorId === currentUserId)
-  const currentIndex = isSample ? -1 : myPosts.findIndex((p) => p.id === post?.id)
-  const prevPost = currentIndex >= 0 ? (myPosts[currentIndex + 1] ?? null) : null
-  const nextPost = currentIndex > 0 ? (myPosts[currentIndex - 1] ?? null) : null
+  const navPosts = authorPosts ?? []
+  const currentIndex = isSample ? -1 : navPosts.findIndex((p) => String(p.id) === String(post?.id))
+  const prevPost = currentIndex >= 0 ? (navPosts[currentIndex + 1] ?? null) : null
+  const nextPost = currentIndex > 0 ? (navPosts[currentIndex - 1] ?? null) : null
 
   return (
     <div>
@@ -589,6 +616,7 @@ export default function PostDetail() {
             onClick={closeComments}
           />
           <div
+            data-no-ptr
             className="fixed left-0 right-0 bottom-0 z-50 flex flex-col rounded-t-3xl"
             style={{
               height: '85vh',
@@ -745,6 +773,12 @@ export default function PostDetail() {
         {/* 좋아요 */}
         <button
           onClick={handleToggleLike}
+          onMouseDown={() => startLongPress('likes')}
+          onMouseUp={cancelLongPress}
+          onMouseLeave={cancelLongPress}
+          onTouchStart={() => startLongPress('likes')}
+          onTouchEnd={cancelLongPress}
+          onTouchMove={cancelLongPress}
           className="flex items-center gap-2 transition-all active:scale-95"
           style={{ color: postLiked ? '#ef4444' : '#9ca3af' }}
         >
@@ -760,6 +794,12 @@ export default function PostDetail() {
         {/* 리버블 */}
         <button
           onClick={handleToggleRebubble}
+          onMouseDown={() => startLongPress('rebubbles')}
+          onMouseUp={cancelLongPress}
+          onMouseLeave={cancelLongPress}
+          onTouchStart={() => startLongPress('rebubbles')}
+          onTouchEnd={cancelLongPress}
+          onTouchMove={cancelLongPress}
           className="flex items-center gap-2 transition-all active:scale-95"
           style={{ color: postRebubbled ? '#3b82f6' : '#9ca3af' }}
         >
@@ -791,5 +831,52 @@ export default function PostDetail() {
 
       </div>
     </div>
+
+    {/* 좋아요/리버블 목록 시트 */}
+    {reactionsSheet && (
+      <>
+        <div className="fixed inset-0 z-50" style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }} onClick={() => setReactionsSheet(null)} />
+        <div className="fixed left-0 right-0 bottom-0 z-50 rounded-t-3xl flex flex-col" style={{ maxHeight: '60vh', background: 'var(--sheet-bg)', backdropFilter: 'blur(20px)', boxShadow: '0 -4px 30px rgba(0,0,0,0.2)' }}>
+          <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+            <div className="w-10 h-1 rounded-full bg-gray-200" />
+          </div>
+          <div className="px-5 py-3 flex items-center gap-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--divider)' }}>
+            {reactionsSheet.type === 'likes' ? (
+              <svg viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" strokeWidth="1.8" className="w-4 h-4">
+                <path d="M12 21C12 21 3 14.5 3 8.5a4.5 4.5 0 0 1 9-0.5 4.5 4.5 0 0 1 9 0.5C21 14.5 12 21 12 21z" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" className="w-4 h-4">
+                <circle cx="8" cy="15" r="5" strokeWidth={1.3}/>
+                <circle cx="18" cy="7" r="3" strokeWidth={1.2}/>
+                <circle cx="19.5" cy="17.5" r="1.8" strokeWidth={1.1}/>
+              </svg>
+            )}
+            <p className="text-sm font-bold text-gray-800">
+              {reactionsSheet.type === 'likes' ? '좋아요' : 'Rebubble'} {reactionsSheet.users.length}
+            </p>
+          </div>
+          <div className="overflow-y-auto flex-1 px-5 py-2 pb-10">
+            {reactionsSheet.users.length === 0 ? (
+              <p className="text-sm text-gray-300 text-center py-8">아직 없습니다.</p>
+            ) : reactionsSheet.users.map((u) => (
+              <button
+                key={u.username}
+                onClick={() => { setReactionsSheet(null); navigate(`/user/${u.username}`) }}
+                className="w-full flex items-center gap-3 py-3 active:opacity-60 transition-opacity"
+              >
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--avatar-bg)' }}>
+                  {u.avatar ? <img src={u.avatar} alt={u.name} className="w-full h-full object-cover rounded-full" /> : <span className="text-sm font-bold text-gray-500">{u.name[0]?.toUpperCase()}</span>}
+                </div>
+                <div className="flex flex-col items-start min-w-0">
+                  <span className="text-sm font-semibold text-gray-800">{u.name}</span>
+                  {u.bio && <span className="text-xs text-gray-400 truncate w-full">{u.bio}</span>}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </>
+    )}
   )
 }

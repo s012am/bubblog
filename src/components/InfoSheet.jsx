@@ -1,11 +1,13 @@
 import { useRef, useState, useLayoutEffect, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useFollow } from '../context/FollowContext'
 
 export default function InfoSheet({
   onClose, avatar, name, username, bio, bubbles, log, pop,
   followers, following,
   followerUsers = [], followingUsers = [],
-  profileUrl,
+  targetUserId, onBlockChange, profileUrl,
 }) {
   const startYRef = useRef(null)
   const [dragY, setDragY] = useState(0)
@@ -19,6 +21,47 @@ export default function InfoSheet({
   const listRef = useRef(null)
   const [pullY, setPullY] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
+  const { isFollowing, unfollow } = useFollow()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [isBlocked, setIsBlocked] = useState(false)
+  const [toastMsg, setToastMsg] = useState('')
+
+  const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(''), 2000) }
+
+  // 차단 여부 초기 확인
+  useEffect(() => {
+    if (!targetUserId) return
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data?.user) return
+      supabase.from('blocks').select('id').eq('blocker_id', data.user.id).eq('blocked_id', targetUserId).maybeSingle()
+        .then(({ data: row }) => setIsBlocked(!!row))
+    })
+  }, [targetUserId])
+
+  const handleBlock = async () => {
+    setMenuOpen(false)
+    const { data } = await supabase.auth.getUser()
+    if (!data?.user || !targetUserId) return
+    if (isBlocked) {
+      await supabase.from('blocks').delete().eq('blocker_id', data.user.id).eq('blocked_id', targetUserId)
+      setIsBlocked(false)
+      showToast('차단이 해제되었습니다')
+    } else {
+      await supabase.from('blocks').insert({ blocker_id: data.user.id, blocked_id: targetUserId })
+      setIsBlocked(true)
+      if (username && isFollowing(username)) unfollow(username)
+      showToast('차단되었습니다')
+    }
+    onBlockChange?.()
+  }
+
+  const handleReport = async () => {
+    setMenuOpen(false)
+    const { data } = await supabase.auth.getUser()
+    if (!data?.user || !targetUserId) return
+    await supabase.from('reports').insert({ reporter_id: data.user.id, reported_user_id: targetUserId })
+    showToast('신고가 접수되었습니다')
+  }
   const pullYRef = useRef(0)
   const DOWN_THRESHOLD = 80
   const UP_THRESHOLD = 60
@@ -203,20 +246,69 @@ export default function InfoSheet({
                 </div>
                 {bio && <p className="text-xs text-gray-400">{bio}</p>}
               </div>
-              <button
-                onClick={() => {
-                  const url = profileUrl || window.location.href
-                  if (navigator.share) navigator.share({ title: name, url })
-                  else navigator.clipboard.writeText(url)
-                }}
-                className="w-9 h-9 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
-                style={{ border: '1px solid rgba(0,0,0,0.08)' }}
-              >
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4">
-                  <circle cx="12" cy="3" r="1.8"/><circle cx="4" cy="8" r="1.8"/><circle cx="12" cy="13" r="1.8"/>
-                  <path d="M5.8 9l4.4 2.5M10.2 4.5L5.8 7" strokeLinecap="round"/>
-                </svg>
-              </button>
+              <div className="relative flex-shrink-0">
+                <button
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 transition-colors"
+                  style={{ border: '1px solid rgba(0,0,0,0.08)' }}
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
+                  </svg>
+                </button>
+                {menuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-50" onClick={() => setMenuOpen(false)} />
+                    <div
+                      className="absolute right-0 top-10 z-50 w-32 rounded-2xl overflow-hidden"
+                      style={{ background: 'var(--dropdown-bg, var(--card-bg))', backdropFilter: 'blur(16px)', boxShadow: '0 4px 20px rgba(0,0,0,0.18)', border: '1px solid var(--divider)' }}
+                    >
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false)
+                          const url = profileUrl || window.location.href
+                          if (navigator.share) navigator.share({ title: name, url })
+                          else navigator.clipboard.writeText(url)
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2.5"
+                      >
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5 text-gray-400">
+                          <circle cx="12" cy="3" r="1.8"/><circle cx="4" cy="8" r="1.8"/><circle cx="12" cy="13" r="1.8"/>
+                          <path d="M5.8 9l4.4 2.5M10.2 4.5L5.8 7" strokeLinecap="round"/>
+                        </svg>
+                        공유
+                      </button>
+                      <div className="h-px bg-gray-100" />
+                      <button
+                        onClick={handleBlock}
+                        className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-50 transition-colors flex items-center gap-2.5"
+                      >
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5">
+                          <circle cx="8" cy="8" r="6.5"/><path d="M3.4 3.4l9.2 9.2" strokeLinecap="round"/>
+                        </svg>
+                        {isBlocked ? '차단 해제' : '차단'}
+                      </button>
+                      <div className="h-px bg-gray-100" />
+                      <button
+                        onClick={handleReport}
+                        className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-50 transition-colors flex items-center gap-2.5"
+                      >
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5">
+                          <path d="M8 1.5L1.5 13h13L8 1.5z" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M8 6v3.5" strokeLinecap="round"/><circle cx="8" cy="11" r="0.5" fill="currentColor" stroke="none"/>
+                        </svg>
+                        신고
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+              {/* 토스트 */}
+              {toastMsg && (
+                <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-full text-xs font-semibold text-white whitespace-nowrap" style={{ background: 'rgba(30,30,30,0.85)', backdropFilter: 'blur(8px)' }}>
+                  {toastMsg}
+                </div>
+              )}
             </div>
             <div className="h-px bg-gray-100" />
             <div className="flex items-center">

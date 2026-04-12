@@ -285,7 +285,7 @@ export default function Write() {
               value={customDate}
               min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
               onChange={(e) => { setCustomDate(e.target.value); setExpiry('custom') }}
-              className="absolute inset-0 opacity-0 pointer-events-none"
+              className="absolute inset-0 opacity-0 cursor-pointer"
               style={{ accentColor: '#6b7280' }}
             />
           </div>
