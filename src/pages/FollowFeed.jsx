@@ -312,7 +312,11 @@ export default function FollowFeed() {
         {/* 팔로잉 유저 줄 */}
         {following.length > 0 && profilesLoaded && (
           <div className="flex gap-4 px-5 pb-4 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-            {following.map((username) => {
+            {[...following].sort((a, b) => {
+              const latestA = posts.find(p => p.authorUsername === a)?.date ?? ''
+              const latestB = posts.find(p => p.authorUsername === b)?.date ?? ''
+              return latestB.localeCompare(latestA)
+            }).map((username) => {
               const p = followedProfiles[username]
               const displayName = p?.nickname || username
               return (
