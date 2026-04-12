@@ -45,6 +45,8 @@ export default function Write() {
   const [customDate, setCustomDate] = useState('')
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [visibility, setVisibility] = useState(editPost?.visibility ?? 'public')
+  const [showColorPicker, setShowColorPicker] = useState(false)
+  const [activeColor, setActiveColor] = useState('#1f2937')
   const editorRef = useRef(null)
   const fileInputRef = useRef(null)
   const dateInputRef = useRef(null)
@@ -143,6 +145,25 @@ export default function Write() {
     const text = editorRef.current?.innerText?.trim() ?? ''
     setHasContent(text.length > 0)
     triggerAutoSave()
+  }
+
+  const COLORS = [
+    { color: '#1f2937', label: '기본' },
+    { color: '#6b7280', label: '회색' },
+    { color: '#ef4444', label: '빨강' },
+    { color: '#f97316', label: '주황' },
+    { color: '#eab308', label: '노랑' },
+    { color: '#22c55e', label: '초록' },
+    { color: '#3b82f6', label: '파랑' },
+    { color: '#8b5cf6', label: '보라' },
+    { color: '#ec4899', label: '분홍' },
+  ]
+
+  const applyColor = (color) => {
+    editorRef.current?.focus()
+    document.execCommand('foreColor', false, color)
+    setActiveColor(color)
+    setShowColorPicker(false)
   }
 
   const handlePaste = (e) => {
@@ -451,6 +472,22 @@ export default function Write() {
           willChange: 'transform',
         }}
       >
+        {showColorPicker && (
+          <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-gray-100 overflow-x-auto">
+            {COLORS.map(({ color, label }) => (
+              <button
+                key={color}
+                title={label}
+                onPointerDown={(e) => { e.preventDefault(); applyColor(color) }}
+                className="flex-shrink-0 w-7 h-7 rounded-full transition-transform active:scale-90"
+                style={{
+                  background: color,
+                  boxShadow: activeColor === color ? `0 0 0 2px white, 0 0 0 3.5px ${color}` : 'none',
+                }}
+              />
+            ))}
+          </div>
+        )}
         <div className="flex items-center px-2 py-1.5 overflow-x-auto gap-0.5">
           <button
             title="이미지 첨부"
@@ -462,6 +499,15 @@ export default function Write() {
               <circle cx="7" cy="9" r="1.5" />
               <path d="M2 13.5l4-4 3 3 3-3 6 5.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
+          </button>
+          <div className="w-px h-5 bg-gray-100 mx-1 flex-shrink-0" />
+          <button
+            title="글자 색상"
+            onPointerDown={(e) => { e.preventDefault(); setShowColorPicker(v => !v) }}
+            className="flex-shrink-0 w-10 h-10 rounded-xl flex flex-col items-center justify-center gap-0.5 text-gray-500 active:bg-gray-100 transition-colors"
+          >
+            <span className="text-sm font-bold leading-none" style={{ color: activeColor }}>A</span>
+            <div className="w-4 h-1 rounded-full" style={{ background: activeColor }} />
           </button>
           <div className="w-px h-5 bg-gray-100 mx-1 flex-shrink-0" />
           {TOOLBAR.map((t) => (
