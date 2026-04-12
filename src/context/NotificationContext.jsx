@@ -5,8 +5,10 @@ const NotificationContext = createContext(null)
 export const useNotification = () => useContext(NotificationContext)
 
 const NOTIF_SELECT = `
-  id, type, post_id, post_title, comment_text, read, created_at,
-  actor:actor_id (id, username, nickname, avatar_url)
+  id, type, post_id, comment_id, read, created_at,
+  actor:actor_id (id, username, nickname, avatar_url),
+  post:post_id (title),
+  comment:comment_id (content)
 `
 
 function mapNotif(raw) {
@@ -14,8 +16,8 @@ function mapNotif(raw) {
     id: raw.id,
     type: raw.type,
     postId: raw.post_id,
-    postTitle: raw.post_title,
-    commentText: raw.comment_text,
+    postTitle: raw.post?.title || '',
+    commentText: raw.comment?.content || '',
     read: raw.read,
     createdAt: raw.created_at,
     actor: raw.actor || null,

@@ -7,6 +7,7 @@ import { useFollow } from '../context/FollowContext'
 import { useTheme, THEMES } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useNotification } from '../context/NotificationContext'
 
 function timeAgo(ts) {
   const diff = Date.now() - ts
@@ -138,7 +139,9 @@ export default function Profile() {
   const { drafts, deleteDraft } = useDraft()
   const { followerUsers, followingUsers } = useFollow()
   const { logout } = useAuth()
+  const { notifications, unreadCount, markRead, markAllRead } = useNotification()
   const navigate = useNavigate()
+  const [notifSheet, setNotifSheet] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(profile)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -239,6 +242,19 @@ export default function Profile() {
           </div>
         ) : (
           <div className="flex items-center gap-2">
+            {/* 알림 */}
+            <button
+              onClick={() => { setNotifSheet(true); markAllRead() }}
+              className="relative w-9 h-9 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 transition-colors"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="w-5 h-5">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-400" />
+              )}
+            </button>
             {/* 설정 */}
             <button
               onClick={() => navigate('/settings')}
@@ -540,6 +556,59 @@ export default function Profile() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* 알림 바텀시트 */}
+      {notifSheet && (
+        <>
+          <div className="fixed inset-0 z-50" style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }} onClick={() => setNotifSheet(false)} />
+          <div className="fixed left-0 right-0 bottom-0 z-50 rounded-t-3xl flex flex-col" style={{ height: '75vh', background: 'var(--sheet-bg)', backdropFilter: 'blur(20px)', boxShadow: '0 -4px 30px rgba(0,0,0,0.2)' }}>
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-gray-200" />
+            </div>
+            <div className="px-5 py-3 flex items-center justify-between flex-shrink-0" style={{ borderBottom: '1px solid var(--divider)' }}>
+              <p className="text-base font-bold text-gray-800">알림</p>
+              <button onClick={() => setNotifSheet(false)} className="w-7 h-7 flex items-center justify-center rounded-full text-gray-400" style={{ background: 'var(--input-bg)' }}>
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+                  <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 pb-10">
+              {notifications.length === 0 ? (
+                <p className="text-sm text-gray-300 text-center py-12">알림이 없습니다.</p>
+              ) : notifications.map((n) => {
+                const actor = n.actor
+                const actorName = actor?.nickname || actor?.username || '누군가'
+                const d = new Date(n.createdAt)
+                const dateStr = `${String(d.getMonth()+1).padStart(2,'0')}·${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => { markRead(n.id); setNotifSheet(false); if (n.postId) navigate(`/post/${n.postId}`) }}
+                    className="w-full flex items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-gray-50"
+                    style={{ borderBottom: '1px solid var(--divider)', background: n.read ? 'transparent' : 'var(--input-bg)' }}
+                  >
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'var(--avatar-bg)' }}>
+                      {actor?.avatar_url
+                        ? <img src={actor.avatar_url} alt={actorName} className="w-full h-full object-cover rounded-full" />
+                        : <span className="text-sm font-bold text-gray-500">{actorName[0]?.toUpperCase()}</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-700 leading-snug">
+                        <span className="font-semibold">{actorName}</span>님이 내 댓글에 답글을 달았습니다.
+                      </p>
+                      {n.commentText && <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">"{n.commentText}"</p>}
+                      {n.postTitle && <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">— {n.postTitle}</p>}
+                      <p className="text-xs text-gray-300 mt-1">{dateStr}</p>
+                    </div>
+                    {!n.read && <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0 mt-2" />}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </>
       )}
 
       {/* 차단 목록 바텀시트 */}
