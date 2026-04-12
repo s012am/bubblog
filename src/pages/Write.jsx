@@ -440,7 +440,7 @@ export default function Write() {
             onInput={handleInput}
             onPaste={handlePaste}
             onClick={handleEditorClick}
-            className="write-editor min-h-64 w-full text-sm text-gray-700 bg-transparent focus:outline-none leading-relaxed"
+            className="write-editor min-h-64 w-full text-base text-gray-700 bg-transparent focus:outline-none leading-[1.85]"
           />
         </div>
 
