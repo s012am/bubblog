@@ -15,6 +15,17 @@ function timeAgo(dateStr) {
 }
 
 const TYPE_CONFIG = {
+  reply: {
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    message: (n, onNameClick) => {
+      const actorName = n.actor?.nickname || n.actor?.username || '누군가'
+      return <><button className="font-semibold" onClick={onNameClick}>{actorName}</button>님이 내 댓글에 답글을 달았습니다.{n.commentText && <span className="block text-xs text-gray-400 mt-0.5">"{n.commentText}"</span>}</>
+    },
+  },
   follow: {
     icon: (
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5">
@@ -124,7 +135,7 @@ export default function Alert() {
     markRead(n.id)
     if (n.type === 'follow') {
       if (n.actor?.username) navigate(`/user/${n.actor.username}`)
-    } else if (n.type === 'comment' && n.postId) {
+    } else if ((n.type === 'comment' || n.type === 'reply') && n.postId) {
       navigate(`/post/${n.postId}`, { state: { openComments: true } })
     } else if (n.postId) {
       navigate(`/post/${n.postId}`)
