@@ -7,6 +7,7 @@ const DEFAULT_PROFILE = { id: '', name: '', bio: '', avatar: null }
 
 export function ProfileProvider({ children }) {
   const [profile, setProfileState] = useState(DEFAULT_PROFILE)
+  const [profileLoaded, setProfileLoaded] = useState(false)
 
   // 로그인된 유저 프로필 불러오기
   useEffect(() => {
@@ -16,7 +17,7 @@ export function ProfileProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) fetchProfile(session.user.id)
-      else setProfileState(DEFAULT_PROFILE)
+      else { setProfileState(DEFAULT_PROFILE); setProfileLoaded(true) }
     })
 
     return () => subscription.unsubscribe()
@@ -37,6 +38,7 @@ export function ProfileProvider({ children }) {
         avatar: data.avatar_url || null,
       })
     }
+    setProfileLoaded(true)
   }
 
   const setProfile = async (next) => {
@@ -54,7 +56,7 @@ export function ProfileProvider({ children }) {
   }
 
   return (
-    <ProfileContext.Provider value={{ profile, setProfile }}>
+    <ProfileContext.Provider value={{ profile, setProfile, profileLoaded }}>
       {children}
     </ProfileContext.Provider>
   )

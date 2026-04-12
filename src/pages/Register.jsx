@@ -69,7 +69,7 @@ const EyeIcon = ({ crossed }) => crossed ? (
 export default function Register() {
   const { register } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ id: '', nickname: '', email: '', password: '', passwordConfirm: '' })
+  const [form, setForm] = useState({ id: '', email: '', password: '', passwordConfirm: '' })
   const [show, setShow] = useState({ password: false, confirm: false })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
@@ -86,8 +86,6 @@ export default function Register() {
     if (!form.id.trim()) next.id = '아이디를 입력해주세요.'
     else if (form.id.length < 2) next.id = '아이디는 2자 이상이어야 합니다.'
     else if (!/^[a-zA-Z0-9_]+$/.test(form.id)) next.id = '영문, 숫자, 밑줄(_)만 사용할 수 있습니다.'
-    if (!form.nickname.trim()) next.nickname = '닉네임을 입력해주세요.'
-    else if (form.nickname.length < 2) next.nickname = '닉네임은 2자 이상이어야 합니다.'
     if (!form.email.trim()) next.email = '이메일을 입력해주세요.'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) next.email = '이메일 형식이 올바르지 않습니다.'
     if (!form.password) next.password = '비밀번호를 입력해주세요.'
@@ -104,7 +102,7 @@ export default function Register() {
     const next = validate()
     if (Object.keys(next).length > 0) { setErrors(next); return }
     setLoading(true)
-    const result = await register(form.id, form.nickname, form.email, form.password)
+    const result = await register(form.id, form.email, form.password)
     setLoading(false)
     if (result.error) {
       setErrors({ email: result.error })
@@ -186,14 +184,6 @@ export default function Register() {
               <GlassInput type="text" name="id" value={form.id} onChange={handleChange}
                 placeholder="영문, 숫자, 밑줄 사용 가능" autoComplete="username" error={!!errors.id} />
               <FieldError msg={errors.id} />
-            </div>
-
-            {/* 닉네임 */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5 tracking-wide uppercase">닉네임</label>
-              <GlassInput type="text" name="nickname" value={form.nickname} onChange={handleChange}
-                placeholder="표시될 이름" autoComplete="nickname" error={!!errors.nickname} />
-              <FieldError msg={errors.nickname} />
             </div>
 
             {/* 이메일 */}

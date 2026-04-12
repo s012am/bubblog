@@ -25,9 +25,10 @@ import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
 import OpenSource from './pages/OpenSource'
 import AuthCallback from './pages/AuthCallback'
+import ProfileSetup from './components/ProfileSetup'
 import { PostsProvider } from './context/PostsContext'
 import { ThemeProvider } from './context/ThemeContext'
-import { ProfileProvider } from './context/ProfileContext'
+import { ProfileProvider, useProfile } from './context/ProfileContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { RebubbleProvider } from './context/RebubbleContext'
 import { FollowProvider } from './context/FollowContext'
@@ -51,10 +52,16 @@ function PublicRoute({ children }) {
 function AppInner() {
   const { pathname } = useLocation()
   const { isLoggedIn, loading } = useAuth()
+  const { profile, profileLoaded } = useProfile()
   const isPost = pathname.startsWith('/post/')
   const isWrite = pathname.startsWith('/write/')
 
   if (loading) return null
+
+  // Show profile setup for new users who haven't set a nickname yet
+  if (isLoggedIn && profileLoaded && !profile.name) {
+    return <ProfileSetup />
+  }
 
   return (
     <div className={`min-h-dvh ${isPost || isWrite ? 'pb-2' : 'pb-16'}`}>
