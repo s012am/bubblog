@@ -7,7 +7,7 @@ export default function InfoSheet({
   onClose, avatar, name, username, bio, bubbles, log, pop,
   followers, following,
   followerUsers = [], followingUsers = [],
-  targetUserId, onBlockChange, profileUrl,
+  targetUserId, isOwn, onBlockChange, profileUrl,
 }) {
   const startYRef = useRef(null)
   const [dragY, setDragY] = useState(0)
@@ -278,27 +278,31 @@ export default function InfoSheet({
                         </svg>
                         공유
                       </button>
-                      <div className="h-px bg-gray-100" />
-                      <button
-                        onClick={handleBlock}
-                        className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-50 transition-colors flex items-center gap-2.5"
-                      >
-                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5">
-                          <circle cx="8" cy="8" r="6.5"/><path d="M3.4 3.4l9.2 9.2" strokeLinecap="round"/>
-                        </svg>
-                        {isBlocked ? '차단 해제' : '차단'}
-                      </button>
-                      <div className="h-px bg-gray-100" />
-                      <button
-                        onClick={handleReport}
-                        className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-50 transition-colors flex items-center gap-2.5"
-                      >
-                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5">
-                          <path d="M8 1.5L1.5 13h13L8 1.5z" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M8 6v3.5" strokeLinecap="round"/><circle cx="8" cy="11" r="0.5" fill="currentColor" stroke="none"/>
-                        </svg>
-                        신고
-                      </button>
+                      {!isOwn && (
+                        <>
+                          <div className="h-px bg-gray-100" />
+                          <button
+                            onClick={handleBlock}
+                            className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-50 transition-colors flex items-center gap-2.5"
+                          >
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5">
+                              <circle cx="8" cy="8" r="6.5"/><path d="M3.4 3.4l9.2 9.2" strokeLinecap="round"/>
+                            </svg>
+                            {isBlocked ? '차단 해제' : '차단'}
+                          </button>
+                          <div className="h-px bg-gray-100" />
+                          <button
+                            onClick={handleReport}
+                            className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-50 transition-colors flex items-center gap-2.5"
+                          >
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5">
+                              <path d="M8 1.5L1.5 13h13L8 1.5z" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M8 6v3.5" strokeLinecap="round"/><circle cx="8" cy="11" r="0.5" fill="currentColor" stroke="none"/>
+                            </svg>
+                            신고
+                          </button>
+                        </>
+                      )}
                     </div>
                   </>
                 )}
