@@ -32,6 +32,7 @@ export default function Write() {
   const [expiry, setExpiry] = useState(60 * 60 * 1000) // 기본 1시간 (ms)
   const [customDate, setCustomDate] = useState('')
   const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [visibility, setVisibility] = useState(editPost?.visibility ?? 'public')
   const editorRef = useRef(null)
   const fileInputRef = useRef(null)
   const dateInputRef = useRef(null)
@@ -144,6 +145,7 @@ export default function Write() {
         content: contentHTML,
         excerpt: contentText.slice(0, 100).trim(),
         tags,
+        visibility,
       })
       navigate(`/post/${editPost.id}`, { replace: true })
     } else {
@@ -153,6 +155,7 @@ export default function Write() {
         excerpt: contentText.slice(0, 100).trim(),
         tags,
         type,
+        visibility,
         expiresAt: isPop
           ? expiry === 'custom'
             ? new Date(customDate).getTime()
@@ -230,6 +233,29 @@ export default function Write() {
         >
           {isEdit ? '저장' : '올리기'}
         </button>
+      </div>
+
+      {/* 공개 범위 */}
+      <div className="px-5 py-2.5 border-b border-gray-100 flex items-center gap-2">
+        {[
+          { value: 'public', label: '전체공개', icon: 'M12 2a10 10 0 1 1 0 20A10 10 0 0 1 12 2zm0 0c-2.5 3-4 6.5-4 10s1.5 7 4 10m0-20c2.5 3 4 6.5 4 10s-1.5 7-4 10M2 12h20' },
+          { value: 'private', label: '나만보기', icon: 'M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm6-2c0 3.5-2.7 6-6 6s-6-2.5-6-6 2.7-6 6-6 6 2.5 6 6zM3 3l18 18' },
+        ].map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setVisibility(opt.value)}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors"
+            style={{
+              background: visibility === opt.value ? 'rgba(30,30,30,0.85)' : 'var(--input-bg)',
+              color: visibility === opt.value ? 'rgba(255,255,255,0.9)' : '#9ca3af',
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3 h-3">
+              <path d={opt.icon} strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {/* Pop 만료 시간 선택 */}

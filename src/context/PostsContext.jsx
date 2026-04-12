@@ -57,6 +57,7 @@ function mapPost(raw) {
     rebubbles: (raw.rebubbles || []).map(r => r.user_id),
     comments: rootComments,
     readTime: Math.max(1, Math.ceil((raw.content || '').length / 500)),
+    visibility: raw.visibility || 'public',
   }
 }
 
@@ -81,11 +82,14 @@ export function PostsProvider({ children }) {
     setBlockedIds(new Set((data || []).map(r => r.blocked_id)))
   }, [])
 
-  const fetchPosts = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('posts')
-      .select(POST_SELECT)
-      .order('created_at', { ascending: false })
+  const fetchPosts = useCallback(async (userId) => {
+    let query = supabase.from('posts').select(POST_SELECT).order('created_at', { ascending: false })
+    if (userId) {
+      query = query.or(`visibility.eq.public,author_id.eq.${userId}`)
+    } else {
+      query = query.eq('visibility', 'public')
+    }
+    const { data, error } = await query
 
     if (!error && data) {
       const now = Date.now()
@@ -98,12 +102,12 @@ export function PostsProvider({ children }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setCurrentUserId(session?.user?.id || null)
-      if (session?.user) { fetchBlockedIds(); fetchPosts() }
+      if (session?.user) { fetchBlockedIds(); fetchPosts(session.user.id) }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setCurrentUserId(session?.user?.id || null)
-      if (session?.user) { fetchBlockedIds(); fetchPosts() }
+      if (session?.user) { fetchBlockedIds(); fetchPosts(session.user.id) }
       else { setPosts([]); setBlockedIds(new Set()); localStorage.removeItem(POSTS_CACHE_KEY) }
     })
 
@@ -146,6 +150,7 @@ export function PostsProvider({ children }) {
         type: post.type || 'bubble',
         tags: post.tags || [],
         expires_at: post.expiresAt ? new Date(post.expiresAt).toISOString() : null,
+        visibility: post.visibility || 'public',
       })
       .select(POST_SELECT)
       .single()
@@ -164,6 +169,7 @@ export function PostsProvider({ children }) {
     if (changes.tags !== undefined) dbChanges.tags = changes.tags
     if (changes.type !== undefined) dbChanges.type = changes.type
     if (changes.expiresAt !== undefined) dbChanges.expires_at = changes.expiresAt ? new Date(changes.expiresAt).toISOString() : null
+    if (changes.visibility !== undefined) dbChanges.visibility = changes.visibility
 
     const { error } = await supabase.from('posts').update(dbChanges).eq('id', id)
     if (!error) setPosts(prev => prev.map(p => p.id === id ? { ...p, ...changes } : p))
@@ -175,7 +181,7 @@ export function PostsProvider({ children }) {
   }
 
   const renameAuthor = async () => {
-    await fetchPosts()
+    await fetchPosts(currentUserId)
   }
 
   const incrementView = async (postId) => {
