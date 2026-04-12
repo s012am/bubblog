@@ -5,18 +5,18 @@ import { useTheme } from '../context/ThemeContext'
 const BUBBLES = [
   {
     id: 'large',
-    circle: { cx: 8, cy: 15, r: 5, strokeWidth: 0.8 },
-    shine: { cx: 5.9, cy: 12.9, rx: 1.6, ry: 0.9, transform: 'rotate(-30 5.9 12.9)' },
+    circle: { cx: 9.5, cy: 14, r: 5, strokeWidth: 0.8 },
+    shine: { cx: 7.4, cy: 11.9, rx: 1.6, ry: 0.9, transform: 'rotate(-30 7.4 11.9)' },
   },
   {
     id: 'medium',
-    circle: { cx: 18, cy: 7, r: 3, strokeWidth: 0.72 },
-    shine: { cx: 16.9, cy: 5.9, rx: 0.9, ry: 0.5, transform: 'rotate(-30 16.9 5.9)' },
+    circle: { cx: 17, cy: 8, r: 3, strokeWidth: 0.72 },
+    shine: { cx: 15.9, cy: 6.9, rx: 0.9, ry: 0.5, transform: 'rotate(-30 15.9 6.9)' },
   },
   {
     id: 'small',
-    circle: { cx: 19.5, cy: 17.5, r: 1.8, strokeWidth: 0.66 },
-    shine: { cx: 18.8, cy: 16.8, rx: 0.55, ry: 0.32, transform: 'rotate(-30 18.8 16.8)' },
+    circle: { cx: 18, cy: 16.5, r: 1.8, strokeWidth: 0.66 },
+    shine: { cx: 17.3, cy: 15.8, rx: 0.55, ry: 0.32, transform: 'rotate(-30 17.3 15.8)' },
   },
 ]
 
@@ -47,8 +47,8 @@ export default function ProfileSetup() {
       className="fixed inset-0 z-50 flex flex-col items-center justify-center px-8"
       style={{ background: 'var(--bg)' }}
     >
-      <div className="w-full max-w-sm flex flex-col gap-4">
-        <div className="flex flex-col items-center gap-1">
+      <div className="w-full max-w-sm flex flex-col gap-6">
+        <div className="flex flex-col items-center gap-2">
           <svg width="120" height="120" viewBox="0 0 24 24" fill="none" overflow="visible">
             {BUBBLES.map(({ id, circle, shine }) => (
               <g key={id}>
