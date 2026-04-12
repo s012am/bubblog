@@ -12,6 +12,18 @@ const TOOLBAR = [
   { label: 'H2',  title: 'Heading 2',     cmd: 'formatBlock',   value: 'h2', style: { fontWeight: 700, fontSize: '11px', letterSpacing: '-0.02em' } },
   { label: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" className="w-4 h-4"><line x1="4" y1="4" x2="4" y2="16" strokeWidth="2.5" strokeLinecap="round"/><line x1="8" y1="6" x2="16" y2="6" strokeWidth="1.5" strokeLinecap="round"/><line x1="8" y1="10" x2="16" y2="10" strokeWidth="1.5" strokeLinecap="round"/><line x1="8" y1="14" x2="16" y2="14" strokeWidth="1.5" strokeLinecap="round"/></svg>, title: 'Quote', cmd: 'formatBlock', value: 'blockquote', style: {} },
   { label: '―',  title: 'Divider',       cmd: 'insertHorizontalRule', style: { fontSize: '16px', lineHeight: 1 } },
+  {
+    label: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4"><line x1="3" y1="5" x2="17" y2="5" strokeLinecap="round"/><line x1="3" y1="9" x2="13" y2="9" strokeLinecap="round"/><line x1="3" y1="13" x2="17" y2="13" strokeLinecap="round"/><line x1="3" y1="17" x2="11" y2="17" strokeLinecap="round"/></svg>,
+    title: 'Align Left', cmd: 'justifyLeft', style: {},
+  },
+  {
+    label: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4"><line x1="3" y1="5" x2="17" y2="5" strokeLinecap="round"/><line x1="5" y1="9" x2="15" y2="9" strokeLinecap="round"/><line x1="3" y1="13" x2="17" y2="13" strokeLinecap="round"/><line x1="5" y1="17" x2="15" y2="17" strokeLinecap="round"/></svg>,
+    title: 'Align Center', cmd: 'justifyCenter', style: {},
+  },
+  {
+    label: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4"><line x1="3" y1="5" x2="17" y2="5" strokeLinecap="round"/><line x1="7" y1="9" x2="17" y2="9" strokeLinecap="round"/><line x1="3" y1="13" x2="17" y2="13" strokeLinecap="round"/><line x1="9" y1="17" x2="17" y2="17" strokeLinecap="round"/></svg>,
+    title: 'Align Right', cmd: 'justifyRight', style: {},
+  },
 ]
 
 export default function Write() {
