@@ -473,6 +473,7 @@ export default function Write() {
           placeholder="제목"
           value={title}
           onChange={handleTitleChange}
+          maxLength={50}
           className="w-full font-extrabold text-gray-800 placeholder-gray-200 bg-transparent focus:outline-none mb-5 leading-tight"
           style={{ fontSize: '26px' }}
         />
