@@ -4,6 +4,8 @@ import { usePosts } from '../context/PostsContext'
 import { useDraft } from '../context/DraftContext'
 import { searchMentionUsers, sendMentionNotifs } from '../lib/mentions'
 import MentionDropdown from '../components/MentionDropdown'
+import SourcePicker from '../components/SourcePicker'
+import SourceCard from '../components/SourceCard'
 
 const TOOLBAR = [
   { label: 'B',   title: 'Bold',          cmd: 'bold',          style: { fontWeight: 800, fontSize: '14px' } },
@@ -47,6 +49,8 @@ export default function Write() {
   const [customDate, setCustomDate] = useState('')
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [visibility, setVisibility] = useState(editPost?.visibility ?? 'public')
+  const [source, setSource] = useState(editPost?.source ?? null)
+  const [showSourcePicker, setShowSourcePicker] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [activeColor, setActiveColor] = useState('#1f2937')
   const [mentionQuery, setMentionQuery] = useState(null)
@@ -247,6 +251,7 @@ export default function Write() {
         excerpt: contentText.slice(0, 100).trim(),
         tags,
         visibility,
+        source,
       })
       navigate(`/post/${editPost.id}`, { replace: true })
     } else {
@@ -257,6 +262,7 @@ export default function Write() {
         tags,
         type,
         visibility,
+        source,
         expiresAt: isPop
           ? expiry === 'custom'
             ? new Date(customDate).getTime()
@@ -360,6 +366,31 @@ export default function Write() {
             {opt.label}
           </button>
         ))}
+      </div>
+
+      {/* 글감 */}
+      <div className="px-5 py-2.5 border-b border-gray-100 flex items-center gap-3">
+        {source ? (
+          <div className="flex items-center gap-2 flex-1">
+            <SourceCard source={source} compact />
+            <button onClick={() => setSource(null)} className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowSourcePicker(true)}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors"
+            style={{ background: 'var(--input-bg)', color: '#9ca3af' }}
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5">
+              <circle cx="8" cy="8" r="6"/><path d="M8 5v6M5 8h6" strokeLinecap="round"/>
+            </svg>
+            글감 추가
+          </button>
+        )}
       </div>
 
       {/* Pop 만료 시간 선택 */}
@@ -650,6 +681,13 @@ export default function Write() {
             </button>
           </div>
         </div>
+      )}
+
+      {showSourcePicker && (
+        <SourcePicker
+          onSelect={(s) => { setSource(s); setShowSourcePicker(false) }}
+          onClose={() => setShowSourcePicker(false)}
+        />
       )}
     </div>
   )

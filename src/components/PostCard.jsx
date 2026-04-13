@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
 import { useBookmark } from '../context/BookmarkContext'
+import SourceCard from './SourceCard'
 
 const cardStyle = {
   background: 'var(--card-bg-solid)',
@@ -82,6 +83,11 @@ export default function PostCard({ post, showMenu = false }) {
           <p className="text-sm text-gray-400 leading-relaxed line-clamp-2 mb-3">
             {post.excerpt}
           </p>
+          {post.source && (
+            <div className="mb-2">
+              <SourceCard source={post.source} compact />
+            </div>
+          )}
           <div className="flex items-center justify-between mt-3">
             {/* 날짜 + Log/Pop */}
             <div className="flex items-center gap-2">

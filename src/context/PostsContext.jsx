@@ -58,6 +58,7 @@ function mapPost(raw) {
     comments: rootComments,
     readTime: Math.max(1, Math.ceil((raw.content || '').length / 500)),
     visibility: raw.visibility || 'public',
+    source: raw.source || null,
   }
 }
 
@@ -151,6 +152,7 @@ export function PostsProvider({ children }) {
         tags: post.tags || [],
         expires_at: post.expiresAt ? new Date(post.expiresAt).toISOString() : null,
         visibility: post.visibility || 'public',
+        source: post.source || null,
       })
       .select(POST_SELECT)
       .single()
@@ -170,6 +172,7 @@ export function PostsProvider({ children }) {
     if (changes.type !== undefined) dbChanges.type = changes.type
     if (changes.expiresAt !== undefined) dbChanges.expires_at = changes.expiresAt ? new Date(changes.expiresAt).toISOString() : null
     if (changes.visibility !== undefined) dbChanges.visibility = changes.visibility
+    if ('source' in changes) dbChanges.source = changes.source
 
     const { error } = await supabase.from('posts').update(dbChanges).eq('id', id)
     if (!error) setPosts(prev => prev.map(p => p.id === id ? { ...p, ...changes } : p))
