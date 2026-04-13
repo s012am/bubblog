@@ -60,6 +60,17 @@ const TYPE_CONFIG = {
       return <><button className="font-semibold" onClick={onNameClick}>{actorName}</button>님이 <span className="font-semibold">'{n.postTitle}'</span>에 댓글을 남겼습니다.{n.commentText && <span className="block text-xs text-gray-400 mt-0.5">"{n.commentText}"</span>}</>
     },
   },
+  mention: {
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+        <circle cx="12" cy="12" r="4"/><path d="M12 8v-2a6 6 0 1 0 6 6h-2" strokeLinecap="round"/>
+      </svg>
+    ),
+    message: (n, onNameClick) => {
+      const actorName = n.actor?.nickname || n.actor?.username || '누군가'
+      return <><button className="font-semibold" onClick={onNameClick}>{actorName}</button>님이 {n.commentId ? '댓글' : '글'}에서 회원님을 멘션했습니다.{n.postTitle && <span className="font-semibold"> '{n.postTitle}'</span>}</>
+    },
+  },
 }
 
 function SwipeableNotification({ children, onDelete }) {

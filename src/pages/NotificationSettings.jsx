@@ -7,6 +7,7 @@ const NOTIF_TYPES = [
   { key: 'follow',   label: '팔로우',  desc: '누군가 나를 팔로우할 때' },
   { key: 'comment',  label: '댓글',    desc: '내 글에 댓글이 달릴 때' },
   { key: 'reply',    label: '답글',    desc: '내 댓글에 답글이 달릴 때' },
+  { key: 'mention',  label: '멘션',    desc: '글이나 댓글에서 나를 멘션할 때' },
 ]
 
 export default function NotificationSettings() {

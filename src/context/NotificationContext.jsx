@@ -12,7 +12,7 @@ const NOTIF_SELECT = `
 `
 
 const PREFS_KEY = 'bubblog_notif_prefs'
-const DEFAULT_PREFS = { like: true, rebubble: true, follow: true, comment: true, reply: true }
+const DEFAULT_PREFS = { like: true, rebubble: true, follow: true, comment: true, reply: true, mention: true }
 
 function loadPrefs() {
   try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') } }

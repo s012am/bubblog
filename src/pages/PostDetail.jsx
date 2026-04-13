@@ -5,6 +5,8 @@ import { haptic } from '../lib/haptic'
 import { useProfile } from '../context/ProfileContext'
 import { useBookmark } from '../context/BookmarkContext'
 import { supabase } from '../lib/supabase'
+import { searchMentionUsers, sendMentionNotifs } from '../lib/mentions'
+import MentionDropdown from '../components/MentionDropdown'
 
 function formatRemaining(expiresAt) {
   const ms = expiresAt - Date.now()
@@ -71,6 +73,17 @@ function InlineText({ text }) {
   )
 }
 
+function renderWithMentions(text) {
+  const parts = text.split(/(@[a-zA-Z0-9_]+)/g)
+  return parts.map((part, i) =>
+    /^@[a-zA-Z0-9_]+$/.test(part) ? (
+      <Link key={i} to={`/user/${part.slice(1)}`} className="font-semibold" style={{ color: 'var(--mention-color, #6b7280)' }}>{part}</Link>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  )
+}
+
 function ContentBlock({ block }) {
   switch (block.type) {
     case 'h2':
@@ -111,6 +124,9 @@ function CommentCard({ comment, onDelete, canDelete, onReply, onDeleteReply, pro
   const [confirmDeleteReplyId, setConfirmDeleteReplyId] = useState(null)
   const [showReplyInput, setShowReplyInput] = useState(false)
   const [replyText, setReplyText] = useState('')
+  const [replyMentionQuery, setReplyMentionQuery] = useState(null)
+  const [replyMentionResults, setReplyMentionResults] = useState([])
+  const replyInputRef = useRef(null)
   const d = new Date(comment.date)
   const dateStr = `${String(d.getMonth() + 1).padStart(2, '0')} · ${String(d.getDate()).padStart(2, '0')} · ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 
@@ -120,6 +136,14 @@ function CommentCard({ comment, onDelete, canDelete, onReply, onDeleteReply, pro
     setReplyText('')
     setShowReplyInput(false)
   }
+
+  useEffect(() => {
+    if (replyMentionQuery === null || replyMentionQuery.length === 0) { setReplyMentionResults([]); return }
+    const timer = setTimeout(async () => {
+      setReplyMentionResults(await searchMentionUsers(replyMentionQuery))
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [replyMentionQuery])
 
   return (
     <>
@@ -140,7 +164,7 @@ function CommentCard({ comment, onDelete, canDelete, onReply, onDeleteReply, pro
                 </button>
               )}
             </div>
-            <p className="text-sm text-gray-500 leading-relaxed">{comment.content}</p>
+            <p className="text-sm text-gray-500 leading-relaxed">{renderWithMentions(comment.content)}</p>
             <button
               onClick={() => setShowReplyInput((v) => !v)}
               className="text-xs text-gray-400 hover:text-gray-600 mt-1.5 transition-colors"
@@ -173,7 +197,7 @@ function CommentCard({ comment, onDelete, canDelete, onReply, onDeleteReply, pro
                         </button>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 leading-relaxed">{reply.content}</p>
+                    <p className="text-xs text-gray-500 leading-relaxed">{renderWithMentions(reply.content)}</p>
                   </div>
                 </div>
               )
@@ -184,14 +208,43 @@ function CommentCard({ comment, onDelete, canDelete, onReply, onDeleteReply, pro
         {/* 답글 입력 */}
         {showReplyInput && (
           <div className="ml-11 mt-2 flex gap-2">
-            <input
-              autoFocus
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') submitReply() }}
-              placeholder={`${comment.author}에게 답글...`}
-              className="flex-1 rounded-xl px-3 py-1.5 text-xs text-gray-700 placeholder-gray-300 bg-gray-50 border border-gray-100 focus:outline-none focus:border-gray-300"
-            />
+            <div className="flex-1 relative">
+              {replyMentionResults.length > 0 && (
+                <MentionDropdown
+                  results={replyMentionResults}
+                  onSelect={(username) => {
+                    const cursor = replyInputRef.current?.selectionStart ?? replyText.length
+                    const textBefore = replyText.slice(0, cursor)
+                    const match = textBefore.match(/@(\w*)$/)
+                    if (match) {
+                      const start = cursor - match[0].length
+                      setReplyText(replyText.slice(0, start) + `@${username} ` + replyText.slice(cursor))
+                    }
+                    setReplyMentionQuery(null)
+                    setReplyMentionResults([])
+                  }}
+                />
+              )}
+              <input
+                ref={replyInputRef}
+                autoFocus
+                value={replyText}
+                onChange={(e) => {
+                  setReplyText(e.target.value)
+                  const cursor = e.target.selectionStart
+                  const textBefore = e.target.value.slice(0, cursor)
+                  const match = textBefore.match(/@(\w*)$/)
+                  setReplyMentionQuery(match ? match[1] : null)
+                  if (!match) setReplyMentionResults([])
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') { setReplyMentionQuery(null); setReplyMentionResults([]) }
+                  else if (e.key === 'Enter' && !replyMentionResults.length) submitReply()
+                }}
+                placeholder={`${comment.author}에게 답글...`}
+                className="w-full rounded-xl px-3 py-1.5 text-xs text-gray-700 placeholder-gray-300 bg-gray-50 border border-gray-100 focus:outline-none focus:border-gray-300"
+              />
+            </div>
             <button
               onClick={submitReply}
               disabled={!replyText.trim()}
@@ -243,6 +296,9 @@ export default function PostDetail() {
   const { state: locationState } = useLocation()
   const [showComments, setShowComments] = useState(!!locationState?.openComments)
   const [commentText, setCommentText] = useState('')
+  const [commentMentionQuery, setCommentMentionQuery] = useState(null)
+  const [commentMentionResults, setCommentMentionResults] = useState([])
+  const commentInputRef = useRef(null)
   const [commentTranslate, setCommentTranslate] = useState(40)
   const [commentDragging, setCommentDragging] = useState(false)
   const dragStartY = useRef(0)
@@ -265,6 +321,14 @@ export default function PostDetail() {
   useEffect(() => {
     if (showComments) setCommentTranslate(40)
   }, [showComments])
+
+  useEffect(() => {
+    if (commentMentionQuery === null || commentMentionQuery.length === 0) { setCommentMentionResults([]); return }
+    const timer = setTimeout(async () => {
+      setCommentMentionResults(await searchMentionUsers(commentMentionQuery))
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [commentMentionQuery])
 
   const closeComments = () => {
     setCommentTranslate(100)
@@ -667,7 +731,7 @@ export default function PostDetail() {
                   comment={comment}
                   canDelete={comment.author === profile.name}
                   onDelete={() => deleteComment(post.id, comment.id)}
-                  onReply={(text) => addReply(post.id, comment.id, text)}
+                  onReply={async (text) => { addReply(post.id, comment.id, text); sendMentionNotifs(text, post.id, comment.id, currentUserId) }}
                   onDeleteReply={(replyId) => deleteReply(post.id, comment.id, replyId)}
                   profile={profile}
                 />
@@ -687,20 +751,53 @@ export default function PostDetail() {
           >
             <form
               className="flex gap-2"
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault()
-                if (commentText.trim()) {
-                  addComment(post.id, commentText.trim())
+                const text = commentText.trim()
+                if (text) {
+                  addComment(post.id, text)
+                  sendMentionNotifs(text, post.id, null, currentUserId)
                   setCommentText('')
+                  setCommentMentionQuery(null)
+                  setCommentMentionResults([])
                 }
               }}
             >
-              <input
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                placeholder="댓글을 입력하세요..."
-                className="flex-1 rounded-xl px-3 py-2 text-sm text-gray-700 placeholder-gray-300 bg-gray-50 border border-gray-100 focus:outline-none focus:border-gray-300"
-              />
+              <div className="flex-1 relative">
+                {commentMentionResults.length > 0 && (
+                  <MentionDropdown
+                    results={commentMentionResults}
+                    onSelect={(username) => {
+                      const cursor = commentInputRef.current?.selectionStart ?? commentText.length
+                      const textBefore = commentText.slice(0, cursor)
+                      const match = textBefore.match(/@(\w*)$/)
+                      if (match) {
+                        const start = cursor - match[0].length
+                        setCommentText(commentText.slice(0, start) + `@${username} ` + commentText.slice(cursor))
+                      }
+                      setCommentMentionQuery(null)
+                      setCommentMentionResults([])
+                    }}
+                  />
+                )}
+                <input
+                  ref={commentInputRef}
+                  value={commentText}
+                  onChange={(e) => {
+                    setCommentText(e.target.value)
+                    const cursor = e.target.selectionStart
+                    const textBefore = e.target.value.slice(0, cursor)
+                    const match = textBefore.match(/@(\w*)$/)
+                    setCommentMentionQuery(match ? match[1] : null)
+                    if (!match) setCommentMentionResults([])
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') { setCommentMentionQuery(null); setCommentMentionResults([]) }
+                  }}
+                  placeholder="댓글을 입력하세요..."
+                  className="w-full rounded-xl px-3 py-2 text-sm text-gray-700 placeholder-gray-300 bg-gray-50 border border-gray-100 focus:outline-none focus:border-gray-300"
+                />
+              </div>
               <button
                 type="submit"
                 disabled={!commentText.trim()}

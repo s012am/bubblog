@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { usePosts } from '../context/PostsContext'
 import { useDraft } from '../context/DraftContext'
+import { searchMentionUsers, sendMentionNotifs } from '../lib/mentions'
+import MentionDropdown from '../components/MentionDropdown'
 
 const TOOLBAR = [
   { label: 'B',   title: 'Bold',          cmd: 'bold',          style: { fontWeight: 800, fontSize: '14px' } },
@@ -30,7 +32,7 @@ export default function Write() {
   const { type, id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { posts, addPost, updatePost } = usePosts()
+  const { posts, addPost, updatePost, currentUserId } = usePosts()
   const { drafts, saveDraft, deleteDraft } = useDraft()
 
   const isEdit = !!id
@@ -47,6 +49,9 @@ export default function Write() {
   const [visibility, setVisibility] = useState(editPost?.visibility ?? 'public')
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [activeColor, setActiveColor] = useState('#1f2937')
+  const [mentionQuery, setMentionQuery] = useState(null)
+  const [mentionResults, setMentionResults] = useState([])
+  const mentionRangeRef = useRef(null)
   const editorRef = useRef(null)
   const fileInputRef = useRef(null)
   const dateInputRef = useRef(null)
@@ -107,6 +112,15 @@ export default function Write() {
     el.addEventListener('blur', () => el.classList.remove('focused'))
   }, [])
 
+  // mention 검색
+  useEffect(() => {
+    if (mentionQuery === null || mentionQuery.length === 0) { setMentionResults([]); return }
+    const timer = setTimeout(async () => {
+      setMentionResults(await searchMentionUsers(mentionQuery))
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [mentionQuery])
+
   // 자동저장 트리거 함수
   const triggerAutoSave = (overrides = {}) => {
     if (isEdit) return
@@ -145,6 +159,43 @@ export default function Write() {
     const text = editorRef.current?.innerText?.trim() ?? ''
     setHasContent(text.length > 0)
     triggerAutoSave()
+    // Detect @mention at cursor
+    const sel = window.getSelection()
+    if (sel?.rangeCount) {
+      const range = sel.getRangeAt(0)
+      if (range.startContainer.nodeType === Node.TEXT_NODE) {
+        const textBefore = range.startContainer.textContent.slice(0, range.startOffset)
+        const match = textBefore.match(/@(\w*)$/)
+        if (match) {
+          setMentionQuery(match[1])
+          mentionRangeRef.current = range.cloneRange()
+          return
+        }
+      }
+    }
+    setMentionQuery(null)
+  }
+
+  const insertMentionInEditor = (username) => {
+    const range = mentionRangeRef.current
+    if (!range) return
+    const container = range.startContainer
+    const offset = range.startOffset
+    const textBefore = container.textContent.slice(0, offset)
+    const match = textBefore.match(/@(\w*)$/)
+    if (!match) return
+    const start = offset - match[0].length
+    container.textContent = container.textContent.slice(0, start) + `@${username} ` + container.textContent.slice(offset)
+    const newRange = document.createRange()
+    const newOffset = start + username.length + 2
+    newRange.setStart(container, Math.min(newOffset, container.textContent.length))
+    newRange.collapse(true)
+    window.getSelection().removeAllRanges()
+    window.getSelection().addRange(newRange)
+    setMentionQuery(null)
+    setMentionResults([])
+    mentionRangeRef.current = null
+    setHasContent(true)
   }
 
   const COLORS = [
@@ -214,7 +265,10 @@ export default function Write() {
       })
       // 제출 성공 시 draft 삭제
       deleteDraft(sessionDraftId.current)
-      if (newPost) navigate(`/post/${newPost.id}`, { replace: true })
+      if (newPost) {
+        sendMentionNotifs(contentText, newPost.id, null, currentUserId)
+        navigate(`/post/${newPost.id}`, { replace: true })
+      }
     }
   }
 
@@ -440,6 +494,7 @@ export default function Write() {
             onInput={handleInput}
             onPaste={handlePaste}
             onClick={handleEditorClick}
+            onKeyDown={(e) => { if (e.key === 'Escape') { setMentionQuery(null); setMentionResults([]) } }}
             className="write-editor min-h-64 w-full text-base text-gray-700 bg-transparent focus:outline-none leading-[1.85]"
           />
         </div>
@@ -463,7 +518,7 @@ export default function Write() {
       {/* 키보드 위 고정 툴바 */}
       <div
         ref={toolbarRef}
-        className="fixed bottom-0 left-0 right-0 z-50"
+        className="fixed bottom-0 left-0 right-0 z-50 relative"
         style={{
           background: 'var(--nav-bg)',
           backdropFilter: 'blur(16px)',
@@ -472,6 +527,9 @@ export default function Write() {
           willChange: 'transform',
         }}
       >
+        {mentionResults.length > 0 && (
+          <MentionDropdown results={mentionResults} onSelect={insertMentionInEditor} />
+        )}
         {showColorPicker && (
           <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-gray-100 overflow-x-auto">
             {COLORS.map(({ color, label }) => (
