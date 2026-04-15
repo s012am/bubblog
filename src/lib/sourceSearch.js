@@ -1,4 +1,14 @@
-const OMDB_KEY = import.meta.env.VITE_OMDB_API_KEY
+const NAVER_ID = import.meta.env.VITE_NAVER_CLIENT_ID
+const NAVER_SECRET = import.meta.env.VITE_NAVER_CLIENT_SECRET
+
+const naverHeaders = {
+  'X-Naver-Client-Id': NAVER_ID,
+  'X-Naver-Client-Secret': NAVER_SECRET,
+}
+
+function stripHtml(str) {
+  return (str || '').replace(/<[^>]+>/g, '').trim()
+}
 
 export async function searchMusic(query) {
   try {
@@ -20,16 +30,15 @@ export async function searchMusic(query) {
 export async function searchBook(query) {
   try {
     const res = await fetch(
-      `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=8&fields=title,author_name,cover_i,first_publish_year`
+      `https://openapi.naver.com/v1/search/book.json?query=${encodeURIComponent(query)}&display=8`,
+      { headers: naverHeaders }
     )
     const json = await res.json()
-    return (json.docs || []).map((item) => ({
-      title: item.title || '',
-      creator: (item.author_name || []).join(', ') || '',
-      cover: item.cover_i
-        ? `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg`
-        : null,
-      year: item.first_publish_year ? String(item.first_publish_year) : '',
+    return (json.items || []).map((item) => ({
+      title: stripHtml(item.title),
+      creator: stripHtml(item.author),
+      cover: item.image || null,
+      year: item.pubdate ? item.pubdate.slice(0, 4) : '',
     }))
   } catch {
     return []
@@ -39,14 +48,15 @@ export async function searchBook(query) {
 export async function searchMovie(query) {
   try {
     const res = await fetch(
-      `https://www.omdbapi.com/?s=${encodeURIComponent(query)}&type=movie&apikey=${OMDB_KEY}`
+      `https://openapi.naver.com/v1/search/movie.json?query=${encodeURIComponent(query)}&display=8`,
+      { headers: naverHeaders }
     )
     const json = await res.json()
-    return (json.Search || []).map((item) => ({
-      title: item.Title || '',
-      creator: '',
-      cover: item.Poster && item.Poster !== 'N/A' ? item.Poster : null,
-      year: item.Year || '',
+    return (json.items || []).map((item) => ({
+      title: stripHtml(item.title),
+      creator: stripHtml(item.director).replace(/\|/g, ', ').replace(/,$/, '').trim(),
+      cover: item.image || null,
+      year: item.pubdate ? String(item.pubdate).slice(0, 4) : '',
     }))
   } catch {
     return []
@@ -56,14 +66,15 @@ export async function searchMovie(query) {
 export async function searchDrama(query) {
   try {
     const res = await fetch(
-      `https://www.omdbapi.com/?s=${encodeURIComponent(query)}&type=series&apikey=${OMDB_KEY}`
+      `https://openapi.naver.com/v1/search/movie.json?query=${encodeURIComponent(query)}&display=8`,
+      { headers: naverHeaders }
     )
     const json = await res.json()
-    return (json.Search || []).map((item) => ({
-      title: item.Title || '',
-      creator: '',
-      cover: item.Poster && item.Poster !== 'N/A' ? item.Poster : null,
-      year: item.Year || '',
+    return (json.items || []).map((item) => ({
+      title: stripHtml(item.title),
+      creator: stripHtml(item.director).replace(/\|/g, ', ').replace(/,$/, '').trim(),
+      cover: item.image || null,
+      year: item.pubdate ? String(item.pubdate).slice(0, 4) : '',
     }))
   } catch {
     return []
@@ -72,15 +83,29 @@ export async function searchDrama(query) {
 
 export async function searchAnime(query) {
   try {
-    const res = await fetch(
-      `https://api.jikan.moe/v4/anime?q=${encodeURIComponent(query)}&limit=8&sfw=true`
-    )
+    const res = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: `query ($search: String) {
+          Page(page: 1, perPage: 8) {
+            media(search: $search, type: ANIME) {
+              title { native romaji }
+              coverImage { medium }
+              startDate { year }
+              studios(isMain: true) { nodes { name } }
+            }
+          }
+        }`,
+        variables: { search: query },
+      }),
+    })
     const json = await res.json()
-    return (json.data || []).map((item) => ({
-      title: item.title || '',
-      creator: item.studios?.[0]?.name || '',
-      cover: item.images?.jpg?.image_url || null,
-      year: item.year ? String(item.year) : '',
+    return (json.data?.Page?.media || []).map((item) => ({
+      title: item.title?.native || item.title?.romaji || '',
+      creator: item.studios?.nodes?.[0]?.name || '',
+      cover: item.coverImage?.medium || null,
+      year: item.startDate?.year ? String(item.startDate.year) : '',
     }))
   } catch {
     return []
