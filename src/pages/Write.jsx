@@ -59,11 +59,11 @@ export default function Write() {
   const [activeColor, setActiveColor] = useState('#1f2937')
   const [activeFormats, setActiveFormats] = useState({})
   const [textAlign, setTextAlign] = useState('left')
-  const [embedPreview, setEmbedPreview] = useState(null)
   const [mentionQuery, setMentionQuery] = useState(null)
   const [mentionResults, setMentionResults] = useState([])
   const mentionRangeRef = useRef(null)
   const savedRangeRef = useRef(null)
+  const sourceDataMap = useRef({}) // pill ID → source data
   const editorRef = useRef(null)
   const fileInputRef = useRef(null)
   const dateInputRef = useRef(null)
@@ -241,7 +241,13 @@ export default function Write() {
 
   const saveSelection = () => {
     const sel = window.getSelection()
-    if (sel?.rangeCount) savedRangeRef.current = sel.getRangeAt(0).cloneRange()
+    if (sel?.rangeCount) {
+      const range = sel.getRangeAt(0)
+      // 에디터 안에 커서가 있을 때만 저장
+      if (editorRef.current?.contains(range.commonAncestorContainer)) {
+        savedRangeRef.current = range.cloneRange()
+      }
+    }
   }
 
   const restoreSelection = () => {
@@ -269,22 +275,112 @@ export default function Write() {
     }
   }
 
+  const TYPE_LABELS = { music: '음악', book: '책', local: '장소', dict: '사전' }
+
+  // 기본 카드 (44px 커버 + 제목 + 아티스트/연도)
+  const buildDefaultCard = (s) => {
+    const label = TYPE_LABELS[s.type] || s.type
+    const coverHtml = s.cover
+      ? `<img src="${s.cover}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;pointer-events:none;" />`
+      : `<div style="width:44px;height:44px;border-radius:10px;background:#e5e7eb;flex-shrink:0;"></div>`
+    const meta = [s.creator, s.year].filter(Boolean).join(' · ')
+    return `${coverHtml}<div style="flex:1;min-width:0;"><p style="font-size:13px;font-weight:600;color:#1f2937;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title}</p>${meta ? `<p style="font-size:11px;color:#9ca3af;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${meta}</p>` : ''}</div><span style="font-size:10px;color:#9ca3af;flex-shrink:0;">${label}</span>`
+  }
+
+  // 확장 카드 (세로형: 커버 크게 + 아래에 제목/아티스트)
+  const buildExpandedCard = (s) => {
+    const coverHtml = s.cover
+      ? `<img src="${s.cover}" style="width:120px;height:120px;border-radius:12px;object-fit:cover;display:block;pointer-events:none;" />`
+      : `<div style="width:120px;height:120px;border-radius:12px;background:#e5e7eb;"></div>`
+    const meta = [s.creator, s.year].filter(Boolean).join(' · ')
+    return `<div style="display:inline-flex;flex-direction:column;gap:8px;">${coverHtml}<div><p style="font-size:13px;font-weight:700;color:#1f2937;margin:0 0 2px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title}</p>${meta ? `<p style="font-size:11px;color:#6b7280;margin:0;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${meta}</p>` : ''}</div></div>`
+  }
+
+  const handleEditorPointerDown = (e) => {
+    const embed = e.target.closest?.('[data-source-embed]')
+    if (!embed) return
+    e.preventDefault()
+
+    let s = sourceDataMap.current[embed.dataset.sid]
+    if (!s && embed.dataset.source) {
+      try { s = JSON.parse(embed.dataset.source) } catch (_) {}
+    }
+    if (!s) return
+
+    const startX = e.clientX
+    const startY = e.clientY
+    let dragging = false
+    let ghost = null
+    const embedRect = embed.getBoundingClientRect()
+
+    const onMove = (ev) => {
+      const dx = ev.clientX - startX
+      const dy = ev.clientY - startY
+
+      if (!dragging && Math.hypot(dx, dy) > 6) {
+        dragging = true
+        ghost = embed.cloneNode(true)
+        ghost.style.cssText = `position:fixed;left:${embedRect.left}px;top:${embedRect.top}px;width:${embedRect.width}px;margin:0;pointer-events:none;opacity:0.8;z-index:9999;box-shadow:0 8px 20px rgba(0,0,0,0.15);transform:scale(1.02);`
+        document.body.appendChild(ghost)
+        embed.style.opacity = '0.3'
+      }
+
+      if (dragging && ghost) {
+        ev.preventDefault()
+        ghost.style.left = (ev.clientX - embedRect.width / 2) + 'px'
+        ghost.style.top = (ev.clientY - 24) + 'px'
+      }
+    }
+
+    const onUp = (ev) => {
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onUp)
+      if (ghost) { ghost.remove(); ghost = null }
+      embed.style.opacity = '1'
+
+      if (dragging) {
+        // 드롭 위치에 카드 이동
+        let range = null
+        if (document.caretRangeFromPoint) {
+          range = document.caretRangeFromPoint(ev.clientX, ev.clientY)
+        } else if (document.caretPositionFromPoint) {
+          const pos = document.caretPositionFromPoint(ev.clientX, ev.clientY)
+          if (pos) { range = document.createRange(); range.setStart(pos.offsetNode, pos.offset) }
+        }
+        if (range && editorRef.current?.contains(range.startContainer)) {
+          const inCard = (range.startContainer.nodeType === Node.ELEMENT_NODE
+            ? range.startContainer
+            : range.startContainer.parentElement)?.closest('[data-source-embed]')
+          if (!inCard || inCard === embed) {
+            embed.remove()
+            range.insertNode(embed)
+          }
+        }
+        triggerAutoSave()
+      } else {
+        // 탭: 확장/축소 토글
+        const isExpanded = embed.dataset.expanded === 'true'
+        if (isExpanded) {
+          embed.dataset.expanded = 'false'
+          embed.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#f3f4f6;margin:8px 0;cursor:pointer;user-select:none;'
+          embed.innerHTML = buildDefaultCard(s)
+        } else {
+          embed.dataset.expanded = 'true'
+          embed.style.cssText = 'display:inline-block;padding:12px;border-radius:16px;background:#f3f4f6;margin:8px 0;cursor:pointer;user-select:none;'
+          embed.innerHTML = buildExpandedCard(s)
+        }
+        triggerAutoSave()
+      }
+    }
+
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onUp)
+  }
+
   const handleEditorClick = (e) => {
-    if (e.target.tagName === 'IMG') {
-      const img = e.target
-      img.style.borderRadius = img.style.borderRadius === '12px' ? '0px' : '12px'
-      return
-    }
-    const embed = e.target.closest('[data-source-embed]')
-    if (embed) {
-      setEmbedPreview({
-        type: embed.dataset.st || '',
-        title: embed.dataset.sn || '',
-        creator: embed.dataset.sc || '',
-        cover: embed.dataset.sv || '',
-        year: embed.dataset.sy || '',
-      })
-    }
+    if (e.target.tagName !== 'IMG') return
+    const img = e.target
+    img.style.borderRadius = img.style.borderRadius === '12px' ? '0px' : '12px'
   }
 
   const handleSubmit = async () => {
@@ -327,34 +423,43 @@ export default function Write() {
 
   const insertSourceInEditor = (s) => {
     setShowSourcePicker(false)
-    const TYPE_LABELS = { music: '음악', book: '책', local: '장소', dict: '사전' }
-    const label = TYPE_LABELS[s.type] || s.type
+    const cardId = `src_${Date.now()}`
+    sourceDataMap.current[cardId] = s
 
-    const pill = document.createElement('span')
-    pill.contentEditable = 'false'
-    pill.dataset.sourceEmbed = 'true'
-    pill.dataset.st = s.type || ''
-    pill.dataset.sn = s.title || ''
-    pill.dataset.sc = s.creator || ''
-    pill.dataset.sv = s.cover || ''
-    pill.dataset.sy = s.year || ''
-    pill.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 6px;border-radius:8px;border:1px solid #e5e7eb;font-size:12px;color:#9ca3af;cursor:pointer;user-select:none;white-space:nowrap;vertical-align:middle;'
-    pill.innerHTML = `<span style="font-size:11px;">${label}</span><span style="color:#374151;font-weight:500;">${s.title}</span>`
+    const card = document.createElement('div')
+    card.contentEditable = 'false'
+    card.dataset.sourceEmbed = 'true'
+    card.dataset.sid = cardId
+    card.dataset.expanded = 'false'
+    try { card.dataset.source = JSON.stringify(s) } catch (_) {}
+    card.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#f3f4f6;margin:8px 0;cursor:pointer;user-select:none;'
+    card.innerHTML = buildDefaultCard(s)
+
+    const after = document.createElement('p')
+    after.innerHTML = '<br>'
 
     editorRef.current?.focus()
-    restoreSelection()
+    // savedRange가 에디터 안을 가리킬 때만 복원, 아니면 에디터 끝에 삽입
+    const hasSavedRange = savedRangeRef.current &&
+      editorRef.current?.contains(savedRangeRef.current.commonAncestorContainer)
+    if (hasSavedRange) restoreSelection()
+
     const sel = window.getSelection()
-    if (sel?.rangeCount) {
+    const rangeInEditor = sel?.rangeCount &&
+      editorRef.current?.contains(sel.getRangeAt(0).commonAncestorContainer)
+
+    if (rangeInEditor) {
       const range = sel.getRangeAt(0)
       range.deleteContents()
-      range.insertNode(document.createTextNode('\u00A0')) 
-      range.insertNode(pill)
-      range.setStartAfter(pill)
+      range.insertNode(after)
+      range.insertNode(card)
+      range.setStartAfter(after)
       range.collapse(true)
       sel.removeAllRanges()
       sel.addRange(range)
     } else {
-      editorRef.current?.appendChild(pill)
+      editorRef.current?.appendChild(card)
+      editorRef.current?.appendChild(after)
     }
     setHasContent(true)
     triggerAutoSave()
@@ -586,6 +691,7 @@ export default function Write() {
             suppressContentEditableWarning
             onInput={handleInput}
             onPaste={handlePaste}
+            onPointerDown={handleEditorPointerDown}
             onClick={handleEditorClick}
             onKeyDown={(e) => { if (e.key === 'Escape') { setMentionQuery(null); setMentionResults([]) } }}
             className="write-editor min-h-64 w-full text-base text-gray-700 bg-transparent focus:outline-none leading-[1.85]"
@@ -787,6 +893,7 @@ export default function Write() {
           onClose={() => setShowSourcePicker(false)}
         />
       )}
+
     </div>
   )
 }

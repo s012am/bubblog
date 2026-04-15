@@ -373,6 +373,7 @@ export default function PostDetail() {
   const [fetchedPost, setFetchedPost] = useState(null)
   const [notFound, setNotFound] = useState(false)
   const [authorPosts, setAuthorPosts] = useState(null)
+  const contentRef = useRef(null)
 
   const postFromCtx = posts.find((p) => String(p.id) === String(id))
   const post = postFromCtx ?? fetchedPost
@@ -440,6 +441,46 @@ export default function PostDetail() {
   }, [id, post])
 
   // 작성자의 다른 글 목록 (이전/다음 네비게이션용)
+  // 기존 글의 source embed 요소를 카드 스타일로 업그레이드
+  useEffect(() => {
+    if (!contentRef.current) return
+    const TYPE_LABELS = { music: '음악', book: '책', local: '장소', dict: '사전' }
+    contentRef.current.querySelectorAll('[data-source-embed]').forEach((el) => {
+      // 이미 카드 스타일이면 스킵 (div + 커버 이미지 포함)
+      if (el.tagName === 'DIV' && el.querySelector('img, [style*="background:#e5e7eb"]')) return
+
+      let s = null
+      if (el.dataset.source) {
+        try { s = JSON.parse(el.dataset.source) } catch (_) {}
+      }
+      if (!s) {
+        s = {
+          type: el.dataset.st || '',
+          title: el.dataset.sn || el.innerText || '',
+          creator: el.dataset.sc || '',
+          cover: el.dataset.sv || '',
+          year: el.dataset.sy || '',
+        }
+      }
+      if (!s.title) return
+
+      const label = TYPE_LABELS[s.type] || s.type
+      const coverHtml = s.cover
+        ? `<img src="${s.cover}" style="width:120px;height:120px;border-radius:12px;object-fit:cover;display:block;pointer-events:none;" />`
+        : `<div style="width:120px;height:120px;border-radius:12px;background:#e5e7eb;"></div>`
+      const meta = [s.creator, s.year].filter(Boolean).join(' · ')
+
+      const card = document.createElement('div')
+      card.dataset.sourceEmbed = 'true'
+      if (el.dataset.sid) card.dataset.sid = el.dataset.sid
+      if (el.dataset.source) card.dataset.source = el.dataset.source
+      card.style.cssText = 'display:inline-block;padding:12px;border-radius:16px;background:#f3f4f6;margin:8px 0;'
+      card.innerHTML = `<div style="display:inline-flex;flex-direction:column;gap:8px;">${coverHtml}<div><p style="font-size:13px;font-weight:700;color:#1f2937;margin:0 0 2px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title}</p>${meta ? `<p style="font-size:11px;color:#6b7280;margin:0;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${meta}</p>` : ''}</div></div>`
+
+      el.replaceWith(card)
+    })
+  }, [post?.id])
+
   useEffect(() => {
     if (!post) return
     const ctxAuthorPosts = posts.filter((p) => p.authorId === post.authorId)
@@ -628,7 +669,11 @@ export default function PostDetail() {
           </div>
           <div className="pt-3 space-y-5">
             {(isHTML && !hasMarkdown)
-              ? <div className="write-editor text-sm text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: post.content }} />
+              ? <div
+                  ref={contentRef}
+                  className="write-editor text-sm text-gray-700 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: post.content }}
+                />
               : blocks.map((block, i) => <ContentBlock key={i} block={block} />)
             }
           </div>
@@ -980,6 +1025,7 @@ export default function PostDetail() {
         </div>
       </>
     )}
+
     </>
   )
 }
