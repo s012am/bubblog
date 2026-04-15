@@ -147,6 +147,7 @@ p, span, a {
   white-space: pre-wrap;
 }
 .write-editor hr { border: none; border-top: 1px solid #e5e7eb; margin: 1em 0; }
+.write-editor [contenteditable="false"] { background: transparent !important; outline: none; }
 .write-editor b, .write-editor strong { font-weight: 700; color: #1f2937; }
 .write-editor i, .write-editor em { font-style: italic; }
 .write-editor s { text-decoration: line-through; color: #9ca3af; }

@@ -4,7 +4,7 @@ import { searchMusic, searchBook, searchLocal, searchDict } from '../lib/sourceS
 const CATEGORIES = [
   { key: 'music', label: '음악', search: searchMusic },
   { key: 'book',  label: '책',   search: searchBook },
-  { key: 'local', label: '업체', search: searchLocal },
+  { key: 'local', label: '장소', search: searchLocal },
   { key: 'dict',  label: '사전', search: searchDict },
 ]
 

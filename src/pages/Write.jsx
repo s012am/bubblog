@@ -49,7 +49,6 @@ export default function Write() {
   const [tags, setTags] = useState(editPost?.tags ?? [])
   const [tagInput, setTagInput] = useState('')
   const [hasContent, setHasContent] = useState(!!editPost?.content)
-  const [images] = useState([])
   const [expiry, setExpiry] = useState(60 * 60 * 1000) // 기본 1시간 (ms)
   const [customDate, setCustomDate] = useState('')
   const [showCancelDialog, setShowCancelDialog] = useState(false)
@@ -60,6 +59,7 @@ export default function Write() {
   const [activeColor, setActiveColor] = useState('#1f2937')
   const [activeFormats, setActiveFormats] = useState({})
   const [textAlign, setTextAlign] = useState('left')
+  const [embedPreview, setEmbedPreview] = useState(null)
   const [mentionQuery, setMentionQuery] = useState(null)
   const [mentionResults, setMentionResults] = useState([])
   const mentionRangeRef = useRef(null)
@@ -273,6 +273,17 @@ export default function Write() {
     if (e.target.tagName === 'IMG') {
       const img = e.target
       img.style.borderRadius = img.style.borderRadius === '12px' ? '0px' : '12px'
+      return
+    }
+    const embed = e.target.closest('[data-source-embed]')
+    if (embed) {
+      setEmbedPreview({
+        type: embed.dataset.st || '',
+        title: embed.dataset.sn || '',
+        creator: embed.dataset.sc || '',
+        cover: embed.dataset.sv || '',
+        year: embed.dataset.sy || '',
+      })
     }
   }
 
@@ -316,15 +327,35 @@ export default function Write() {
 
   const insertSourceInEditor = (s) => {
     setShowSourcePicker(false)
-    editorRef.current?.focus()
-    const TYPE_LABELS = { music: '음악', book: '책', local: '업체', dict: '사전' }
+    const TYPE_LABELS = { music: '음악', book: '책', local: '장소', dict: '사전' }
     const label = TYPE_LABELS[s.type] || s.type
-    const meta = [s.creator, s.year].filter(Boolean).join(' · ')
-    const coverHtml = s.cover
-      ? `<img src="${s.cover}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;" />`
-      : `<div style="width:44px;height:44px;border-radius:10px;background:#e5e7eb;flex-shrink:0;"></div>`
-    const html = `<div contenteditable="false" data-source-embed="true" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#f3f4f6;margin:8px 0;cursor:default;">${coverHtml}<div style="flex:1;min-width:0;"><p style="font-size:13px;font-weight:600;color:#1f2937;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title}</p>${meta ? `<p style="font-size:11px;color:#9ca3af;margin:2px 0 0;">${meta}</p>` : ''}</div><span style="font-size:10px;color:#9ca3af;flex-shrink:0;white-space:nowrap;">${label}</span></div><p><br></p>`
-    document.execCommand('insertHTML', false, html)
+
+    const pill = document.createElement('span')
+    pill.contentEditable = 'false'
+    pill.dataset.sourceEmbed = 'true'
+    pill.dataset.st = s.type || ''
+    pill.dataset.sn = s.title || ''
+    pill.dataset.sc = s.creator || ''
+    pill.dataset.sv = s.cover || ''
+    pill.dataset.sy = s.year || ''
+    pill.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 6px;border-radius:8px;border:1px solid #e5e7eb;font-size:12px;color:#9ca3af;cursor:pointer;user-select:none;white-space:nowrap;vertical-align:middle;'
+    pill.innerHTML = `<span style="font-size:11px;">${label}</span><span style="color:#374151;font-weight:500;">${s.title}</span>`
+
+    editorRef.current?.focus()
+    restoreSelection()
+    const sel = window.getSelection()
+    if (sel?.rangeCount) {
+      const range = sel.getRangeAt(0)
+      range.deleteContents()
+      range.insertNode(document.createTextNode('\u00A0')) 
+      range.insertNode(pill)
+      range.setStartAfter(pill)
+      range.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(range)
+    } else {
+      editorRef.current?.appendChild(pill)
+    }
     setHasContent(true)
     triggerAutoSave()
   }
@@ -560,21 +591,6 @@ export default function Write() {
             className="write-editor min-h-64 w-full text-base text-gray-700 bg-transparent focus:outline-none leading-[1.85]"
           />
         </div>
-
-        {/* 첨부 이미지 미리보기 */}
-        {images.length > 0 && (
-          <div className="flex flex-wrap gap-3 pt-4">
-            {images.map((img, i) => (
-              <div key={i} className="relative group">
-                <img src={img.url} alt={img.name} className="w-24 h-24 object-cover rounded-xl border border-gray-100" />
-                <button
-                  onClick={() => removeImage(i)}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-700 text-white text-xs flex items-center justify-center"
-                >×</button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* 키보드 위 고정 툴바 */}
@@ -649,7 +665,7 @@ export default function Write() {
           </button>
           <button
             title="글감 추가"
-            onPointerDown={(e) => { e.preventDefault(); setShowSourcePicker(true) }}
+            onPointerDown={(e) => { e.preventDefault(); saveSelection(); setShowSourcePicker(true) }}
             className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 active:bg-gray-100 active:text-gray-800 transition-colors"
           >
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4">
