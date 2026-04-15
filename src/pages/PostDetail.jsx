@@ -7,7 +7,6 @@ import { useBookmark } from '../context/BookmarkContext'
 import { supabase } from '../lib/supabase'
 import { searchMentionUsers, sendMentionNotifs } from '../lib/mentions'
 import MentionDropdown from '../components/MentionDropdown'
-import SourceCard from '../components/SourceCard'
 
 function formatRemaining(expiresAt) {
   const ms = expiresAt - Date.now()
@@ -505,9 +504,7 @@ export default function PostDetail() {
               ))}
             </div>
           )}
-          {post.source && (
-            <SourceCard source={post.source} />
-          )}
+
           <div className="flex items-start justify-between gap-4">
             <h1 className="text-3xl font-extrabold text-gray-800 leading-tight tracking-tight">
               {post.title}

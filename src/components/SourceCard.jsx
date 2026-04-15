@@ -1,9 +1,8 @@
 const TYPE_LABELS = {
   music: '음악',
   book: '책',
-  movie: '영화',
-  drama: '드라마',
-  anime: '애니',
+  local: '업체',
+  dict: '사전',
 }
 
 const TYPE_ICONS = {
@@ -20,21 +19,17 @@ const TYPE_ICONS = {
       <path d="M5 2v10.5" strokeLinecap="round"/>
     </svg>
   ),
-  movie: (
+  local: (
     <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
-      <rect x="1" y="3" width="12" height="9" rx="1.5"/>
-      <path d="M1 6h12M4 3v3M7 3v3M10 3v3M4 9v3M7 9v3M10 9v3" strokeLinecap="round"/>
+      <path d="M7 1.5a3.5 3.5 0 0 1 3.5 3.5c0 2.5-3.5 7.5-3.5 7.5S3.5 7.5 3.5 5A3.5 3.5 0 0 1 7 1.5z" strokeLinejoin="round"/>
+      <circle cx="7" cy="5" r="1.2" fill="currentColor" stroke="none" opacity="0.4"/>
     </svg>
   ),
-  drama: (
+  dict: (
     <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
-      <rect x="1" y="4" width="12" height="8" rx="1.5"/>
-      <path d="M5 1.5l2 2.5 2-2.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ),
-  anime: (
-    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
-      <path d="M7 1.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6L7 9.6 4.8 11.4l.6-3.6L2.8 5.3l3.6-.5L7 1.5z" strokeLinejoin="round"/>
+      <path d="M3 1.5h6.5l2 2V13H3V1.5z" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M9.5 1.5v2h2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M5 5.5h4M5 7.5h4M5 9.5h3" strokeLinecap="round"/>
     </svg>
   ),
 }

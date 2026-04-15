@@ -3,7 +3,7 @@ export default async function handler(req, res) {
   if (!q) return res.status(400).json({ error: 'query required' })
 
   const response = await fetch(
-    `https://openapi.naver.com/v1/search/movie.json?query=${encodeURIComponent(q)}&display=8`,
+    `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(q)}&display=8`,
     {
       headers: {
         'X-Naver-Client-Id': process.env.VITE_NAVER_CLIENT_ID,

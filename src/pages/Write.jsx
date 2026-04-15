@@ -5,17 +5,22 @@ import { useDraft } from '../context/DraftContext'
 import { searchMentionUsers, sendMentionNotifs } from '../lib/mentions'
 import MentionDropdown from '../components/MentionDropdown'
 import SourcePicker from '../components/SourcePicker'
-import SourceCard from '../components/SourceCard'
 
 const TOOLBAR = [
-  { label: 'B',   title: 'Bold',          cmd: 'bold',          style: { fontWeight: 800, fontSize: '14px' } },
-  { label: 'I',   title: 'Italic',        cmd: 'italic',        style: { fontStyle: 'italic', fontSize: '14px' } },
-  { label: 'U',   title: 'Underline',     cmd: 'underline',     style: { textDecoration: 'underline', fontSize: '14px' } },
-  { label: 'S',   title: 'Strikethrough', cmd: 'strikethrough', style: { textDecoration: 'line-through', fontSize: '13px' } },
-  { label: 'H1',  title: 'Heading 1',     cmd: 'formatBlock',   value: 'h1', style: { fontWeight: 800, fontSize: '11px', letterSpacing: '-0.02em' } },
-  { label: 'H2',  title: 'Heading 2',     cmd: 'formatBlock',   value: 'h2', style: { fontWeight: 700, fontSize: '11px', letterSpacing: '-0.02em' } },
-  { label: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" className="w-4 h-4"><line x1="4" y1="4" x2="4" y2="16" strokeWidth="2.5" strokeLinecap="round"/><line x1="8" y1="6" x2="16" y2="6" strokeWidth="1.5" strokeLinecap="round"/><line x1="8" y1="10" x2="16" y2="10" strokeWidth="1.5" strokeLinecap="round"/><line x1="8" y1="14" x2="16" y2="14" strokeWidth="1.5" strokeLinecap="round"/></svg>, title: 'Quote', cmd: 'formatBlock', value: 'blockquote', style: {} },
-  { label: '―',  title: 'Divider',       cmd: 'insertHorizontalRule', style: { fontSize: '16px', lineHeight: 1 } },
+  { label: 'B', title: 'Bold',          cmd: 'bold',          style: { fontWeight: 800, fontSize: '14px' } },
+  { label: 'I', title: 'Italic',        cmd: 'italic',        style: { fontStyle: 'italic', fontSize: '14px' } },
+  { label: 'U', title: 'Underline',     cmd: 'underline',     style: { textDecoration: 'underline', fontSize: '14px' } },
+  { label: 'S', title: 'Strikethrough', cmd: 'strikethrough', style: { textDecoration: 'line-through', fontSize: '13px' } },
+]
+
+const TOOLBAR_MORE = [
+  { label: 'H1', title: 'Heading 1', cmd: 'formatBlock', value: 'h1', style: { fontWeight: 800, fontSize: '11px', letterSpacing: '-0.02em' } },
+  { label: 'H2', title: 'Heading 2', cmd: 'formatBlock', value: 'h2', style: { fontWeight: 700, fontSize: '11px', letterSpacing: '-0.02em' } },
+  {
+    label: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" className="w-4 h-4"><line x1="4" y1="4" x2="4" y2="16" strokeWidth="2.5" strokeLinecap="round"/><line x1="8" y1="6" x2="16" y2="6" strokeWidth="1.5" strokeLinecap="round"/><line x1="8" y1="10" x2="16" y2="10" strokeWidth="1.5" strokeLinecap="round"/><line x1="8" y1="14" x2="16" y2="14" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+    title: 'Quote', cmd: 'formatBlock', value: 'blockquote', style: {},
+  },
+  { label: '―', title: 'Divider', cmd: 'insertHorizontalRule', style: { fontSize: '16px', lineHeight: 1 } },
   {
     label: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4"><line x1="3" y1="5" x2="17" y2="5" strokeLinecap="round"/><line x1="3" y1="9" x2="13" y2="9" strokeLinecap="round"/><line x1="3" y1="13" x2="17" y2="13" strokeLinecap="round"/><line x1="3" y1="17" x2="11" y2="17" strokeLinecap="round"/></svg>,
     title: 'Align Left', cmd: 'justifyLeft', style: {},
@@ -49,13 +54,16 @@ export default function Write() {
   const [customDate, setCustomDate] = useState('')
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [visibility, setVisibility] = useState(editPost?.visibility ?? 'public')
-  const [source, setSource] = useState(editPost?.source ?? null)
   const [showSourcePicker, setShowSourcePicker] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [activeColor, setActiveColor] = useState('#1f2937')
+  const [activeFormats, setActiveFormats] = useState({})
+  const [textAlign, setTextAlign] = useState('left')
   const [mentionQuery, setMentionQuery] = useState(null)
   const [mentionResults, setMentionResults] = useState([])
   const mentionRangeRef = useRef(null)
+  const savedRangeRef = useRef(null)
   const editorRef = useRef(null)
   const fileInputRef = useRef(null)
   const dateInputRef = useRef(null)
@@ -66,6 +74,7 @@ export default function Write() {
 
   // 세션마다 고유 draftId (Me탭에서 이어쓰기 진입 시 기존 ID 유지)
   const sessionDraftId = useRef(location.state?.draftId ?? `draft_${type}_${Date.now()}`)
+  const tagJustAddedRef = useRef(false)
 
   // 키보드 뷰포트 대응
   useEffect(() => {
@@ -114,6 +123,22 @@ export default function Write() {
     if (!el) return
     el.addEventListener('focus', () => el.classList.add('focused'))
     el.addEventListener('blur', () => el.classList.remove('focused'))
+  }, [])
+
+  // 포맷 상태 감지
+  useEffect(() => {
+    const update = () => {
+      const sel = window.getSelection()
+      if (!sel || !editorRef.current?.contains(sel.anchorNode)) return
+      setActiveFormats({
+        bold: document.queryCommandState('bold'),
+        italic: document.queryCommandState('italic'),
+        underline: document.queryCommandState('underline'),
+        strikethrough: document.queryCommandState('strikethrough'),
+      })
+    }
+    document.addEventListener('selectionchange', update)
+    return () => document.removeEventListener('selectionchange', update)
   }, [])
 
   // mention 검색
@@ -214,11 +239,24 @@ export default function Write() {
     { color: '#ec4899', label: '분홍' },
   ]
 
+  const saveSelection = () => {
+    const sel = window.getSelection()
+    if (sel?.rangeCount) savedRangeRef.current = sel.getRangeAt(0).cloneRange()
+  }
+
+  const restoreSelection = () => {
+    const sel = window.getSelection()
+    if (savedRangeRef.current && sel) {
+      sel.removeAllRanges()
+      sel.addRange(savedRangeRef.current)
+    }
+  }
+
   const applyColor = (color) => {
     editorRef.current?.focus()
+    restoreSelection()
     document.execCommand('foreColor', false, color)
     setActiveColor(color)
-    setShowColorPicker(false)
   }
 
   const handlePaste = (e) => {
@@ -251,7 +289,6 @@ export default function Write() {
         excerpt: contentText.slice(0, 100).trim(),
         tags,
         visibility,
-        source,
       })
       navigate(`/post/${editPost.id}`, { replace: true })
     } else {
@@ -262,7 +299,6 @@ export default function Write() {
         tags,
         type,
         visibility,
-        source,
         expiresAt: isPop
           ? expiry === 'custom'
             ? new Date(customDate).getTime()
@@ -278,9 +314,28 @@ export default function Write() {
     }
   }
 
+  const insertSourceInEditor = (s) => {
+    setShowSourcePicker(false)
+    editorRef.current?.focus()
+    const TYPE_LABELS = { music: '음악', book: '책', local: '업체', dict: '사전' }
+    const label = TYPE_LABELS[s.type] || s.type
+    const meta = [s.creator, s.year].filter(Boolean).join(' · ')
+    const coverHtml = s.cover
+      ? `<img src="${s.cover}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;" />`
+      : `<div style="width:44px;height:44px;border-radius:10px;background:#e5e7eb;flex-shrink:0;"></div>`
+    const html = `<div contenteditable="false" data-source-embed="true" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#f3f4f6;margin:8px 0;cursor:default;">${coverHtml}<div style="flex:1;min-width:0;"><p style="font-size:13px;font-weight:600;color:#1f2937;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title}</p>${meta ? `<p style="font-size:11px;color:#9ca3af;margin:2px 0 0;">${meta}</p>` : ''}</div><span style="font-size:10px;color:#9ca3af;flex-shrink:0;white-space:nowrap;">${label}</span></div><p><br></p>`
+    document.execCommand('insertHTML', false, html)
+    setHasContent(true)
+    triggerAutoSave()
+  }
+
   const applyFormat = ({ cmd, value }) => {
     editorRef.current?.focus()
+    restoreSelection()
     document.execCommand(cmd, false, value ?? null)
+    if (cmd === 'justifyLeft') setTextAlign('left')
+    else if (cmd === 'justifyCenter') setTextAlign('center')
+    else if (cmd === 'justifyRight') setTextAlign('right')
   }
 
   const handleImageSelect = (e) => {
@@ -336,61 +391,32 @@ export default function Write() {
             {isPop ? 'Bubble Pop' : 'Bubble Log'}
           </span>
         </div>
-        <button
-          onClick={handleSubmit}
-          className="text-sm font-semibold text-gray-800 hover:text-gray-500 transition-colors disabled:text-gray-300"
-          disabled={!title.trim() || (isPop && expiry === 'custom' && !customDate)}
-        >
-          {isEdit ? '저장' : '올리기'}
-        </button>
-      </div>
-
-      {/* 공개 범위 */}
-      <div className="px-5 py-2.5 border-b border-gray-100 flex items-center gap-2">
-        {[
-          { value: 'public', label: '전체공개', icon: 'M12 2a10 10 0 1 1 0 20A10 10 0 0 1 12 2zm0 0c-2.5 3-4 6.5-4 10s1.5 7 4 10m0-20c2.5 3 4 6.5 4 10s-1.5 7-4 10M2 12h20' },
-          { value: 'private', label: '나만보기', icon: 'M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm6-2c0 3.5-2.7 6-6 6s-6-2.5-6-6 2.7-6 6-6 6 2.5 6 6zM3 3l18 18' },
-        ].map((opt) => (
+        <div className="flex items-center gap-2">
           <button
-            key={opt.value}
-            onClick={() => setVisibility(opt.value)}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors"
-            style={{
-              background: visibility === opt.value ? 'rgba(30,30,30,0.85)' : 'var(--input-bg)',
-              color: visibility === opt.value ? 'rgba(255,255,255,0.9)' : '#9ca3af',
-            }}
+            onClick={() => setVisibility(v => v === 'public' ? 'private' : 'public')}
+            title={visibility === 'public' ? '전체공개' : '나만보기'}
+            className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+            style={{ color: '#9ca3af' }}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3 h-3">
-              <path d={opt.icon} strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {opt.label}
-          </button>
-        ))}
-      </div>
-
-      {/* 글감 */}
-      <div className="px-5 py-2.5 border-b border-gray-100 flex items-center gap-3">
-        {source ? (
-          <div className="flex items-center gap-2 flex-1">
-            <SourceCard source={source} compact />
-            <button onClick={() => setSource(null)} className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-                <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round"/>
+            {visibility === 'public' ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
+                <path d="M12 2a10 10 0 1 1 0 20A10 10 0 0 1 12 2zm0 0c-2.5 3-4 6.5-4 10s1.5 7 4 10m0-20c2.5 3 4 6.5 4 10s-1.5 7-4 10M2 12h20" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowSourcePicker(true)}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors"
-            style={{ background: 'var(--input-bg)', color: '#9ca3af' }}
-          >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3.5 h-3.5">
-              <circle cx="8" cy="8" r="6"/><path d="M8 5v6M5 8h6" strokeLinecap="round"/>
-            </svg>
-            글감 추가
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
+                <rect x="5" y="11" width="14" height="10" rx="2"/>
+                <path d="M8 11V7a4 4 0 0 1 8 0v4" strokeLinecap="round"/>
+              </svg>
+            )}
           </button>
-        )}
+          <button
+            onClick={handleSubmit}
+            className="text-sm font-semibold text-gray-800 hover:text-gray-500 transition-colors disabled:text-gray-300"
+            disabled={!title.trim() || (isPop && expiry === 'custom' && !customDate)}
+          >
+            {isEdit ? '저장' : '올리기'}
+          </button>
+        </div>
       </div>
 
       {/* Pop 만료 시간 선택 */}
@@ -455,9 +481,9 @@ export default function Write() {
       )}
 
       {/* 입력 영역 */}
-      <div className="flex-1 px-5 pt-7 flex flex-col pb-20" style={{ gap: '0' }}>
+      <div className="flex-1 px-5 pt-6 flex flex-col pb-20">
         {/* 태그 */}
-        <div className="flex flex-wrap items-center gap-1.5 mb-5">
+        <div className="flex flex-wrap items-center gap-1.5 mb-3" style={{ justifyContent: textAlign === 'right' ? 'flex-end' : textAlign === 'center' ? 'center' : 'flex-start', minHeight: '26px' }}>
           {tags.map((tag) => (
             <span
               key={tag}
@@ -477,22 +503,27 @@ export default function Write() {
               <input
                 type="text"
                 value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
+                onChange={(e) => setTagInput(e.target.value.slice(0, 20))}
                 onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ',') e.preventDefault()
+                }}
+                onKeyUp={(e) => {
                   if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
-                    e.preventDefault()
-                    const t = tagInput.trim().replace(/,$/, '')
+                    const t = tagInput.trim().replace(/,$/, '').slice(0, 20)
                     if (t && !tags.includes(t) && tags.length < 10) handleTagsChange([...tags, t])
+                    tagJustAddedRef.current = true
                     setTagInput('')
                   }
                 }}
                 onBlur={() => {
+                  if (tagJustAddedRef.current) { tagJustAddedRef.current = false; return }
                   const t = tagInput.trim().replace(/,$/, '')
                   if (t && !tags.includes(t) && tags.length < 10) handleTagsChange([...tags, t])
                   setTagInput('')
                 }}
                 placeholder="태그 추가"
-                className="text-xs text-gray-500 placeholder-gray-300 bg-transparent focus:outline-none w-16"
+                className="text-xs text-gray-500 placeholder-gray-300 bg-transparent focus:outline-none"
+                style={{ width: `${Math.max(44, tagInput.length * 9 + 24)}px` }}
               />
             </div>
           )}
@@ -505,17 +536,16 @@ export default function Write() {
           value={title}
           onChange={handleTitleChange}
           maxLength={50}
-          className="w-full font-extrabold text-gray-800 placeholder-gray-200 bg-transparent focus:outline-none mb-5 leading-tight"
-          style={{ fontSize: '26px' }}
+          className="w-full font-bold text-gray-800 placeholder-gray-300 bg-transparent focus:outline-none leading-tight mb-5"
+          style={{ fontSize: '26px', textAlign }}
         />
 
-        {/* 구분선 */}
         <div className="h-px bg-gray-100 mb-5" />
 
         {/* 에디터 */}
         <div className="relative flex-1">
           {!hasContent && (
-            <p className="absolute top-0 left-0 text-sm text-gray-300 pointer-events-none select-none leading-relaxed">
+            <p className="absolute top-0 left-0 right-0 text-sm text-gray-300 pointer-events-none select-none leading-relaxed" style={{ textAlign }}>
               내용을 입력하세요...
             </p>
           )}
@@ -563,7 +593,7 @@ export default function Write() {
           <MentionDropdown results={mentionResults} onSelect={insertMentionInEditor} />
         )}
         {showColorPicker && (
-          <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-gray-100 overflow-x-auto">
+          <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-gray-100 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
             {COLORS.map(({ color, label }) => (
               <button
                 key={color}
@@ -576,9 +606,36 @@ export default function Write() {
                 }}
               />
             ))}
+            <div className="relative flex-shrink-0 w-7 h-7">
+              <div
+                className="w-7 h-7 rounded-full"
+                style={{ background: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)' }}
+              />
+              <input
+                type="color"
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full rounded-full"
+                value={activeColor}
+                onChange={(e) => applyColor(e.target.value)}
+              />
+            </div>
           </div>
         )}
-        <div className="flex items-center px-2 py-1.5 overflow-x-auto gap-0.5">
+        {showMoreMenu && (
+          <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-gray-100 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            {TOOLBAR_MORE.map((t) => (
+              <button
+                key={t.title}
+                title={t.title}
+                onPointerDown={(e) => { e.preventDefault(); applyFormat(t); setShowMoreMenu(false) }}
+                className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 active:bg-gray-100 active:text-gray-800 transition-colors"
+                style={t.style}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center px-2 py-1.5 overflow-x-auto gap-0.5" style={{ scrollbarWidth: 'none' }}>
           <button
             title="이미지 첨부"
             onClick={() => fileInputRef.current?.click()}
@@ -590,27 +647,52 @@ export default function Write() {
               <path d="M2 13.5l4-4 3 3 3-3 6 5.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
+          <button
+            title="글감 추가"
+            onPointerDown={(e) => { e.preventDefault(); setShowSourcePicker(true) }}
+            className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 active:bg-gray-100 active:text-gray-800 transition-colors"
+          >
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-4 h-4">
+              <path d="M10 3a7 7 0 1 1 0 14A7 7 0 0 1 10 3z"/>
+              <path d="M10 7v6M7 10h6" strokeLinecap="round"/>
+            </svg>
+          </button>
           <div className="w-px h-5 bg-gray-100 mx-1 flex-shrink-0" />
           <button
             title="글자 색상"
-            onPointerDown={(e) => { e.preventDefault(); setShowColorPicker(v => !v) }}
+            onPointerDown={(e) => { e.preventDefault(); saveSelection(); setShowColorPicker(v => !v); setShowMoreMenu(false) }}
             className="flex-shrink-0 w-10 h-10 rounded-xl flex flex-col items-center justify-center gap-0.5 text-gray-500 active:bg-gray-100 transition-colors"
           >
             <span className="text-sm font-bold leading-none" style={{ color: activeColor }}>A</span>
             <div className="w-4 h-1 rounded-full" style={{ background: activeColor }} />
           </button>
           <div className="w-px h-5 bg-gray-100 mx-1 flex-shrink-0" />
-          {TOOLBAR.map((t) => (
+          {TOOLBAR.map((t) => {
+            const isActive = activeFormats[t.cmd]
+            return (
             <button
               key={t.title}
               title={t.title}
               onPointerDown={(e) => { e.preventDefault(); applyFormat(t) }}
-              className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 active:bg-gray-100 active:text-gray-800 transition-colors"
-              style={t.style}
+              className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+              style={{ ...t.style, background: isActive ? 'rgba(0,0,0,0.08)' : 'transparent', color: isActive ? '#1f2937' : '#6b7280' }}
             >
               {t.label}
             </button>
-          ))}
+          )})}
+          <div className="w-px h-5 bg-gray-100 mx-1 flex-shrink-0" />
+          <button
+            title="더 보기"
+            onPointerDown={(e) => { e.preventDefault(); saveSelection(); setShowMoreMenu(v => !v); setShowColorPicker(false) }}
+            className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+            style={{ color: showMoreMenu ? '#1f2937' : '#9ca3af', background: showMoreMenu ? 'rgba(0,0,0,0.06)' : 'transparent' }}
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <circle cx="4" cy="10" r="1.5"/>
+              <circle cx="10" cy="10" r="1.5"/>
+              <circle cx="16" cy="10" r="1.5"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -685,7 +767,7 @@ export default function Write() {
 
       {showSourcePicker && (
         <SourcePicker
-          onSelect={(s) => { setSource(s); setShowSourcePicker(false) }}
+          onSelect={insertSourceInEditor}
           onClose={() => setShowSourcePicker(false)}
         />
       )}

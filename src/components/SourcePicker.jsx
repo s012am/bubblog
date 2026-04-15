@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { searchMusic, searchBook, searchMovie, searchDrama, searchAnime } from '../lib/sourceSearch'
+import { searchMusic, searchBook, searchLocal, searchDict } from '../lib/sourceSearch'
 
 const CATEGORIES = [
-  { key: 'music',  label: '음악',   search: searchMusic },
-  { key: 'book',   label: '책',     search: searchBook },
-  { key: 'movie',  label: '영화',   search: searchMovie },
-  { key: 'drama',  label: '드라마', search: searchDrama },
-  { key: 'anime',  label: '애니',   search: searchAnime },
+  { key: 'music', label: '음악', search: searchMusic },
+  { key: 'book',  label: '책',   search: searchBook },
+  { key: 'local', label: '업체', search: searchLocal },
+  { key: 'dict',  label: '사전', search: searchDict },
 ]
 
 function CoverFallback({ type }) {
@@ -24,21 +23,17 @@ function CoverFallback({ type }) {
         <path d="M7 3v13" strokeLinecap="round"/>
       </svg>
     ),
-    movie: (
+    local: (
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-gray-400">
-        <rect x="2" y="4" width="16" height="13" rx="2"/>
-        <path d="M2 8h16M6 4v4M10 4v4M14 4v4M6 12v5M10 12v5M14 12v5" strokeLinecap="round"/>
+        <path d="M10 2a5 5 0 0 1 5 5c0 3.5-5 11-5 11S5 10.5 5 7a5 5 0 0 1 5-5z" strokeLinejoin="round"/>
+        <circle cx="10" cy="7" r="1.8" fill="currentColor" stroke="none" opacity="0.35"/>
       </svg>
     ),
-    drama: (
+    dict: (
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-gray-400">
-        <rect x="2" y="5" width="16" height="11" rx="2"/>
-        <path d="M7 2l3 3 3-3" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-    anime: (
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-gray-400">
-        <path d="M10 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L10 14.4l-4.8 2.5.9-5.4L2.2 7.7l5.4-.8L10 2z" strokeLinejoin="round"/>
+        <path d="M4 2h9l3 3v13H4V2z" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M13 2v3h3" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M7 8h6M7 11h6M7 14h4" strokeLinecap="round"/>
       </svg>
     ),
   }
