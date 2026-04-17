@@ -18,6 +18,20 @@ const slides = [
   {
     icon: (
       <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+        <circle cx="8" cy="15" r="5" stroke="#1f2937" strokeWidth="0.8" />
+        <ellipse cx="5.9" cy="12.9" rx="1.6" ry="0.9" fill="#1f2937" opacity="0.2" transform="rotate(-30 5.9 12.9)" />
+        <circle cx="18" cy="7" r="3" stroke="#1f2937" strokeWidth="0.72" />
+        <ellipse cx="16.9" cy="5.9" rx="0.9" ry="0.5" fill="#1f2937" opacity="0.2" transform="rotate(-30 16.9 5.9)" />
+        <circle cx="19.5" cy="17.5" r="1.8" stroke="#1f2937" strokeWidth="0.66" />
+        <ellipse cx="18.8" cy="16.8" rx="0.55" ry="0.32" fill="#1f2937" opacity="0.2" transform="rotate(-30 18.8 16.8)" />
+      </svg>
+    ),
+    title: '드리프트에서\n버블을 만나요',
+    desc: '버블을 작성하면 드리프트에\n둥둥 떠다니는 버블로 나타나요.\n인기글일수록 더 큰 버블로 표시돼요.',
+  },
+  {
+    icon: (
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
         <rect x="3" y="5" width="18" height="14" rx="3" stroke="#1f2937" strokeWidth="0.9" />
         <path d="M7 9h10M7 12h7" stroke="#1f2937" strokeWidth="0.9" strokeLinecap="round" />
       </svg>
@@ -28,16 +42,12 @@ const slides = [
   {
     icon: (
       <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
-        <circle cx="8" cy="15" r="5" stroke="#1f2937" strokeWidth="0.8" />
-        <ellipse cx="5.9" cy="12.9" rx="1.6" ry="0.9" fill="#1f2937" opacity="0.2" transform="rotate(-30 5.9 12.9)" />
-        <circle cx="18" cy="7" r="3" stroke="#1f2937" strokeWidth="0.72" />
-        <ellipse cx="16.9" cy="5.9" rx="0.9" ry="0.5" fill="#1f2937" opacity="0.2" transform="rotate(-30 16.9 5.9)" />
-        <circle cx="19.5" cy="17.5" r="1.8" stroke="#1f2937" strokeWidth="0.66" />
-        <ellipse cx="18.8" cy="16.8" rx="0.55" ry="0.32" fill="#1f2937" opacity="0.2" transform="rotate(-30 18.8 16.8)" />
+        <circle cx="10.5" cy="10.5" r="6" stroke="#1f2937" strokeWidth="0.9" />
+        <path d="M15 15l4 4" stroke="#1f2937" strokeWidth="0.9" strokeLinecap="round" />
       </svg>
     ),
-    title: '드리프트로\n글을 탐색해요',
-    desc: '버블처럼 둥둥 떠다니는 글들을\n자유롭게 탐색하고 팔로우하세요.',
+    title: '다양한 글을\n탐색해 보세요',
+    desc: 'Explore 탭에서 다양한 글들을\n자유롭게 탐색하고 팔로우하세요.',
   },
   {
     icon: (
