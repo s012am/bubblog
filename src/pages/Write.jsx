@@ -55,8 +55,10 @@ export default function Write() {
   const [visibility, setVisibility] = useState(editPost?.visibility ?? 'public')
   const [showSourcePicker, setShowSourcePicker] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
+  const [showSizePicker, setShowSizePicker] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [activeColor, setActiveColor] = useState('#1f2937')
+  const [activeFontSize, setActiveFontSize] = useState(null)
   const [activeFormats, setActiveFormats] = useState({})
   const [textAlign, setTextAlign] = useState('left')
   const [mentionQuery, setMentionQuery] = useState(null)
@@ -72,9 +74,67 @@ export default function Write() {
   const isPop = editPost ? editPost.type === 'pop' : type === 'pop'
   const toolbarRef = useRef(null)
 
-  // 세션마다 고유 draftId (Me탭에서 이어쓰기 진입 시 기존 ID 유지)
-  const sessionDraftId = useRef(location.state?.draftId ?? `draft_${type}_${Date.now()}`)
+  // 세션마다 고유 draftId (Me탭에서 이어쓰기 진입 시 기존 ID 유지, 새로고침 시 sessionStorage에서 복원)
+  const SESSION_KEY = `write_session_${type}`
+  const sessionDraftId = useRef(
+    location.state?.draftId
+    ?? sessionStorage.getItem(SESSION_KEY)
+    ?? `draft_${type}_${Date.now()}`
+  )
   const tagJustAddedRef = useRef(false)
+  const draftRestoredRef = useRef(false)
+
+  // draft ID를 sessionStorage에 유지
+  useEffect(() => {
+    if (!isEdit) sessionStorage.setItem(SESSION_KEY, sessionDraftId.current)
+  }, [])
+
+  // 새로고침 후 즉시 복원 (Supabase 로드 전에 sessionStorage에서)
+  useEffect(() => {
+    if (isEdit || location.state?.draftId) return
+    const raw = sessionStorage.getItem(`${SESSION_KEY}_snap`)
+    if (!raw) return
+    try {
+      const { title: t, content: c, tags: tg } = JSON.parse(raw)
+      if (t) setTitle(t)
+      if (tg?.length) setTags(tg)
+      if (c && editorRef.current) {
+        editorRef.current.innerHTML = c
+        setHasContent(true)
+      }
+      draftRestoredRef.current = true
+    } catch (_) {}
+  }, [])
+
+  // 작성 중 새로고침 방지 (키보드 단축키 + 당겨서 새로고침)
+  useEffect(() => {
+    if (!hasContent && !title) return
+
+    const blockKey = (e) => {
+      if (e.key === 'F5' || ((e.metaKey || e.ctrlKey) && e.key === 'r')) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+    document.addEventListener('keydown', blockKey, true)
+
+    document.documentElement.style.overscrollBehavior = 'none'
+
+    return () => {
+      document.removeEventListener('keydown', blockKey, true)
+      document.documentElement.style.overscrollBehavior = ''
+    }
+  }, [hasContent, title])
+
+  // 사이즈 피커 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!showSizePicker) return
+    const handler = (e) => {
+      if (!toolbarRef.current?.contains(e.target)) setShowSizePicker(false)
+    }
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
+  }, [showSizePicker])
 
   // 키보드 뷰포트 대응
   useEffect(() => {
@@ -121,20 +181,42 @@ export default function Write() {
   useEffect(() => {
     const el = editorRef.current
     if (!el) return
-    el.addEventListener('focus', () => el.classList.add('focused'))
-    el.addEventListener('blur', () => el.classList.remove('focused'))
+    const onFocus = () => el.classList.add('focused')
+    const onBlur = () => el.classList.remove('focused')
+    el.addEventListener('focus', onFocus)
+    el.addEventListener('blur', onBlur)
+    return () => {
+      el.removeEventListener('focus', onFocus)
+      el.removeEventListener('blur', onBlur)
+    }
   }, [])
 
-  // 포맷 상태 감지
+  // 언마운트 시 자동저장 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
+
+  // 포맷 상태 감지 + 선택 영역 자동 저장
   useEffect(() => {
     const update = () => {
       const sel = window.getSelection()
       if (!sel || !editorRef.current?.contains(sel.anchorNode)) return
+      // 에디터 안의 선택 영역은 항상 최신으로 저장
+      if (sel.rangeCount) savedRangeRef.current = sel.getRangeAt(0).cloneRange()
+      const block = document.queryCommandValue('formatBlock').toLowerCase()
       setActiveFormats({
         bold: document.queryCommandState('bold'),
         italic: document.queryCommandState('italic'),
         underline: document.queryCommandState('underline'),
         strikethrough: document.queryCommandState('strikethrough'),
+        h1: block === 'h1',
+        h2: block === 'h2',
+        blockquote: block === 'blockquote',
+        justifyLeft: document.queryCommandState('justifyLeft'),
+        justifyCenter: document.queryCommandState('justifyCenter'),
+        justifyRight: document.queryCommandState('justifyRight'),
       })
     }
     document.addEventListener('selectionchange', update)
@@ -161,6 +243,11 @@ export default function Write() {
       const contentText = editorRef.current?.innerText?.trim() ?? ''
       // title과 content 모두 비어있으면 저장 안 함
       if (!currentTitle.trim() && !contentText) return
+      sessionStorage.setItem(`${SESSION_KEY}_snap`, JSON.stringify({
+        title: currentTitle,
+        content: currentContent,
+        tags: currentTags,
+      }))
       const now = Date.now()
       saveDraft({
         id: sessionDraftId.current,
@@ -265,6 +352,40 @@ export default function Write() {
     setActiveColor(color)
   }
 
+  const FONT_SIZES = [10,11,12,13,14,15,16,17,18,19,20,21,22,23,24].map(s => ({ label: String(s), size: s }))
+
+  const applyFontSize = (size) => {
+    editorRef.current?.focus()
+    restoreSelection()
+    const sel = window.getSelection()
+    if (!sel?.rangeCount) { setActiveFontSize(size); return }
+    const range = sel.getRangeAt(0)
+    if (range.collapsed) {
+      // 커서만 있을 때: 빈 span 삽입 후 그 안에 커서 위치시켜 이후 입력에 크기 적용
+      const span = document.createElement('span')
+      span.style.fontSize = `${size}px`
+      span.appendChild(document.createTextNode('\u200B')) // zero-width space
+      range.insertNode(span)
+      range.setStart(span.firstChild, 1)
+      range.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(range)
+    } else {
+      // 텍스트 선택 시: 선택 영역을 추출해 span으로 감싸기
+      const fragment = range.extractContents()
+      const span = document.createElement('span')
+      span.style.fontSize = `${size}px`
+      span.appendChild(fragment)
+      range.insertNode(span)
+      range.setStartAfter(span)
+      range.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(range)
+    }
+    setActiveFontSize(size)
+    triggerAutoSave()
+  }
+
   const handlePaste = (e) => {
     const text = e.clipboardData.getData('text/plain').trim()
     if (/^https?:\/\/\S+$/.test(text)) {
@@ -275,16 +396,13 @@ export default function Write() {
     }
   }
 
-  const TYPE_LABELS = { music: '음악', book: '책', local: '장소', dict: '사전' }
-
   // 기본 카드 (44px 커버 + 제목 + 아티스트/연도)
   const buildDefaultCard = (s) => {
-    const label = TYPE_LABELS[s.type] || s.type
     const coverHtml = s.cover
       ? `<img src="${s.cover}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;pointer-events:none;" />`
       : `<div style="width:44px;height:44px;border-radius:10px;background:#e5e7eb;flex-shrink:0;"></div>`
     const meta = [s.creator, s.year].filter(Boolean).join(' · ')
-    return `${coverHtml}<div style="flex:1;min-width:0;"><p style="font-size:13px;font-weight:600;color:#1f2937;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title}</p>${meta ? `<p style="font-size:11px;color:#9ca3af;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${meta}</p>` : ''}</div><span style="font-size:10px;color:#9ca3af;flex-shrink:0;">${label}</span>`
+    return `${coverHtml}<div style="flex:1;min-width:0;"><p style="font-size:13px;font-weight:600;color:#1f2937;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title}</p>${meta ? `<p style="font-size:11px;color:#9ca3af;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${meta}</p>` : ''}</div>`
   }
 
   // 확장 카드 (세로형: 커버 크게 + 아래에 제목/아티스트)
@@ -413,6 +531,8 @@ export default function Write() {
           : null,
       })
       // 제출 성공 시 draft 삭제
+      sessionStorage.removeItem(SESSION_KEY)
+      sessionStorage.removeItem(`${SESSION_KEY}_snap`)
       deleteDraft(sessionDraftId.current)
       if (newPost) {
         sendMentionNotifs(contentText, newPost.id, null, currentUserId)
@@ -468,10 +588,26 @@ export default function Write() {
   const applyFormat = ({ cmd, value }) => {
     editorRef.current?.focus()
     restoreSelection()
-    document.execCommand(cmd, false, value ?? null)
-    if (cmd === 'justifyLeft') setTextAlign('left')
-    else if (cmd === 'justifyCenter') setTextAlign('center')
-    else if (cmd === 'justifyRight') setTextAlign('right')
+
+    if (cmd === 'formatBlock') {
+      const current = document.queryCommandValue('formatBlock').toLowerCase()
+      const target = (value || '').toLowerCase()
+      // 같은 블록 포맷이면 p로 되돌리기
+      document.execCommand('formatBlock', false, current === target ? 'p' : value)
+    } else if (cmd === 'justifyLeft' || cmd === 'justifyCenter' || cmd === 'justifyRight') {
+      const alreadyActive = document.queryCommandState(cmd)
+      if (alreadyActive && cmd !== 'justifyLeft') {
+        document.execCommand('justifyLeft', false, null)
+        setTextAlign('left')
+      } else {
+        document.execCommand(cmd, false, null)
+        if (cmd === 'justifyLeft') setTextAlign('left')
+        else if (cmd === 'justifyCenter') setTextAlign('center')
+        else if (cmd === 'justifyRight') setTextAlign('right')
+      }
+    } else {
+      document.execCommand(cmd, false, value ?? null)
+    }
   }
 
   const handleImageSelect = (e) => {
@@ -694,7 +830,7 @@ export default function Write() {
             onPointerDown={handleEditorPointerDown}
             onClick={handleEditorClick}
             onKeyDown={(e) => { if (e.key === 'Escape') { setMentionQuery(null); setMentionResults([]) } }}
-            className="write-editor min-h-64 w-full text-base text-gray-700 bg-transparent focus:outline-none leading-[1.85]"
+            className="write-editor min-h-64 w-full text-sm text-gray-700 bg-transparent focus:outline-none leading-[1.85]"
           />
         </div>
       </div>
@@ -713,6 +849,26 @@ export default function Write() {
       >
         {mentionResults.length > 0 && (
           <MentionDropdown results={mentionResults} onSelect={insertMentionInEditor} />
+        )}
+        {showSizePicker && (
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            {FONT_SIZES.map(({ label, size }) => (
+              <button
+                key={size}
+                onPointerDown={(e) => { e.preventDefault(); applyFontSize(size) }}
+                className="flex-shrink-0 px-3.5 py-1.5 rounded-xl transition-colors"
+                style={{
+                  fontSize: `${size}px`,
+                  lineHeight: 1,
+                  background: 'transparent',
+                  color: activeFontSize === size ? '#1f2937' : '#9ca3af',
+                  fontWeight: activeFontSize === size ? 700 : 400,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         )}
         {showColorPicker && (
           <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-gray-100 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
@@ -744,17 +900,22 @@ export default function Write() {
         )}
         {showMoreMenu && (
           <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-gray-100 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-            {TOOLBAR_MORE.map((t) => (
-              <button
-                key={t.title}
-                title={t.title}
-                onPointerDown={(e) => { e.preventDefault(); applyFormat(t); setShowMoreMenu(false) }}
-                className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 active:bg-gray-100 active:text-gray-800 transition-colors"
-                style={t.style}
-              >
-                {t.label}
-              </button>
-            ))}
+            {TOOLBAR_MORE.map((t) => {
+              const isActive = t.value
+                ? activeFormats[t.value.toLowerCase()]
+                : activeFormats[t.cmd]
+              return (
+                <button
+                  key={t.title}
+                  title={t.title}
+                  onPointerDown={(e) => { e.preventDefault(); applyFormat(t); setShowMoreMenu(false) }}
+                  className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+                  style={{ ...t.style, background: isActive ? 'rgba(0,0,0,0.08)' : 'transparent', color: isActive ? '#1f2937' : '#6b7280' }}
+                >
+                  {t.label}
+                </button>
+              )
+            })}
           </div>
         )}
         <div className="flex items-center px-2 py-1.5 overflow-x-auto gap-0.5" style={{ scrollbarWidth: 'none' }}>
@@ -781,8 +942,17 @@ export default function Write() {
           </button>
           <div className="w-px h-5 bg-gray-100 mx-1 flex-shrink-0" />
           <button
+            title="글자 크기"
+            onPointerDown={(e) => { e.preventDefault(); saveSelection(); setShowSizePicker(v => !v); setShowColorPicker(false); setShowMoreMenu(false) }}
+            className="flex-shrink-0 w-10 h-10 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-colors"
+            style={{ color: showSizePicker ? '#1f2937' : '#9ca3af', background: showSizePicker ? 'rgba(0,0,0,0.06)' : 'transparent' }}
+          >
+            <span className="font-bold leading-none" style={{ fontSize: '15px' }}>A</span>
+            <span className="leading-none" style={{ fontSize: '9px' }}>SIZE</span>
+          </button>
+          <button
             title="글자 색상"
-            onPointerDown={(e) => { e.preventDefault(); saveSelection(); setShowColorPicker(v => !v); setShowMoreMenu(false) }}
+            onPointerDown={(e) => { e.preventDefault(); saveSelection(); setShowColorPicker(v => !v); setShowSizePicker(false); setShowMoreMenu(false) }}
             className="flex-shrink-0 w-10 h-10 rounded-xl flex flex-col items-center justify-center gap-0.5 text-gray-500 active:bg-gray-100 transition-colors"
           >
             <span className="text-sm font-bold leading-none" style={{ color: activeColor }}>A</span>
@@ -868,6 +1038,8 @@ export default function Write() {
             <div className="h-px bg-gray-100 mx-4" />
             <button
               onClick={() => {
+                sessionStorage.removeItem(SESSION_KEY)
+                sessionStorage.removeItem(`${SESSION_KEY}_snap`)
                 deleteDraft(sessionDraftId.current)
                 setShowCancelDialog(false)
                 navigate(-1)

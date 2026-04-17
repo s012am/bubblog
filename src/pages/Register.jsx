@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../context/ProfileContext'
+import { supabase } from '../lib/supabase'
 
 const glass = {
   background: 'rgba(255,255,255,0.92)',
@@ -75,10 +76,25 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const [agree, setAgree] = useState({ privacy: false, terms: false, notify: false })
+  const [idStatus, setIdStatus] = useState(null) // null | 'checking' | 'available' | 'taken'
+  const idDebounceRef = useRef(null)
 
   const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
-    setErrors((prev) => ({ ...prev, [e.target.name]: '' }))
+    const { name, value } = e.target
+    setForm((prev) => ({ ...prev, [name]: value }))
+    setErrors((prev) => ({ ...prev, [name]: '' }))
+
+    if (name === 'id') {
+      setIdStatus(null)
+      if (idDebounceRef.current) clearTimeout(idDebounceRef.current)
+      const trimmed = value.trim()
+      if (trimmed.length < 2 || !/^[a-zA-Z0-9_]+$/.test(trimmed)) return
+      setIdStatus('checking')
+      idDebounceRef.current = setTimeout(async () => {
+        const { data } = await supabase.rpc('get_email_by_username', { p_username: trimmed })
+        setIdStatus(data ? 'taken' : 'available')
+      }, 500)
+    }
   }
 
   const validate = () => {
@@ -86,6 +102,8 @@ export default function Register() {
     if (!form.id.trim()) next.id = '아이디를 입력해주세요.'
     else if (form.id.length < 2) next.id = '아이디는 2자 이상이어야 합니다.'
     else if (!/^[a-zA-Z0-9_]+$/.test(form.id)) next.id = '영문, 숫자, 밑줄(_)만 사용할 수 있습니다.'
+    else if (idStatus === 'taken') next.id = '이미 사용 중인 아이디입니다.'
+    else if (idStatus !== 'available') next.id = '아이디 중복 확인 중입니다.'
     if (!form.email.trim()) next.email = '이메일을 입력해주세요.'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) next.email = '이메일 형식이 올바르지 않습니다.'
     if (!form.password) next.password = '비밀번호를 입력해주세요.'
@@ -99,8 +117,23 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // checking 중이면 직접 확인 후 확정
+    let resolvedStatus = idStatus
+    if (idStatus === 'checking') {
+      if (idDebounceRef.current) clearTimeout(idDebounceRef.current)
+      const trimmed = form.id.trim()
+      const { data } = await supabase.rpc('get_email_by_username', { p_username: trimmed })
+      resolvedStatus = data ? 'taken' : 'available'
+      setIdStatus(resolvedStatus)
+    }
+
     const next = validate()
+    // validate()는 idStatus state를 보는데, resolvedStatus로 보정
+    if (resolvedStatus === 'taken') next.id = '이미 사용 중인 아이디입니다.'
+    else if (resolvedStatus !== 'available') next.id = '아이디 중복 확인 중입니다.'
     if (Object.keys(next).length > 0) { setErrors(next); return }
+
     setLoading(true)
     const result = await register(form.id, form.email, form.password)
     setLoading(false)
@@ -183,6 +216,24 @@ export default function Register() {
               <label className="block text-xs font-semibold text-gray-500 mb-1.5 tracking-wide uppercase">아이디</label>
               <GlassInput type="text" name="id" value={form.id} onChange={handleChange}
                 placeholder="영문, 숫자, 밑줄 사용 가능" autoComplete="username" error={!!errors.id} />
+              {!errors.id && idStatus === 'checking' && (
+                <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
+                  <svg className="w-3 h-3 animate-spin flex-shrink-0" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" strokeOpacity="0.25"/><path d="M14 8a6 6 0 0 0-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                  확인 중...
+                </p>
+              )}
+              {!errors.id && idStatus === 'available' && (
+                <p className="text-xs text-green-500 mt-1.5 flex items-center gap-1">
+                  <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 6.5l2.5 2.5L10 3.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  사용 가능한 아이디입니다.
+                </p>
+              )}
+              {!errors.id && idStatus === 'taken' && (
+                <p className="text-xs text-red-400 mt-1.5 flex items-center gap-1">
+                  <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="6" cy="6" r="5"/><path d="M6 4v2.5M6 8v.3" strokeLinecap="round"/></svg>
+                  이미 사용 중인 아이디입니다.
+                </p>
+              )}
               <FieldError msg={errors.id} />
             </div>
 

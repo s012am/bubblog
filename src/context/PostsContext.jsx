@@ -197,15 +197,24 @@ export function PostsProvider({ children }) {
     const likes = postInState?.likes ?? currentLikes ?? []
     const already = likes.includes(currentUserId)
 
-    if (already) {
-      await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', currentUserId)
-    } else {
-      await supabase.from('likes').insert({ post_id: postId, user_id: currentUserId })
-    }
+    // 낙관적 업데이트
     setPosts(prev => prev.map(p => p.id !== postId ? p : {
       ...p,
-      likes: already ? p.likes.filter(id => id !== currentUserId) : [...(p.likes || []), currentUserId],
+      likes: already ? (p.likes || []).filter(id => id !== currentUserId) : [...(p.likes || []), currentUserId],
     }))
+
+    const { error } = already
+      ? await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', currentUserId)
+      : await supabase.from('likes').insert({ post_id: postId, user_id: currentUserId })
+
+    if (error) {
+      // 실패 시 rollback
+      setPosts(prev => prev.map(p => p.id !== postId ? p : {
+        ...p,
+        likes: already ? [...(p.likes || []), currentUserId] : (p.likes || []).filter(id => id !== currentUserId),
+      }))
+      return already
+    }
     return !already
   }
 
@@ -221,15 +230,24 @@ export function PostsProvider({ children }) {
     const rebubbles = postInState?.rebubbles ?? currentRebubbles ?? []
     const already = rebubbles.includes(currentUserId)
 
-    if (already) {
-      await supabase.from('rebubbles').delete().eq('post_id', postId).eq('user_id', currentUserId)
-    } else {
-      await supabase.from('rebubbles').insert({ post_id: postId, user_id: currentUserId })
-    }
+    // 낙관적 업데이트
     setPosts(prev => prev.map(p => p.id !== postId ? p : {
       ...p,
-      rebubbles: already ? p.rebubbles.filter(id => id !== currentUserId) : [...(p.rebubbles || []), currentUserId],
+      rebubbles: already ? (p.rebubbles || []).filter(id => id !== currentUserId) : [...(p.rebubbles || []), currentUserId],
     }))
+
+    const { error } = already
+      ? await supabase.from('rebubbles').delete().eq('post_id', postId).eq('user_id', currentUserId)
+      : await supabase.from('rebubbles').insert({ post_id: postId, user_id: currentUserId })
+
+    if (error) {
+      // 실패 시 rollback
+      setPosts(prev => prev.map(p => p.id !== postId ? p : {
+        ...p,
+        rebubbles: already ? [...(p.rebubbles || []), currentUserId] : (p.rebubbles || []).filter(id => id !== currentUserId),
+      }))
+      return already
+    }
     return !already
   }
 

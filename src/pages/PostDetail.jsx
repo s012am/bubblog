@@ -442,9 +442,24 @@ export default function PostDetail() {
 
   // 작성자의 다른 글 목록 (이전/다음 네비게이션용)
   // 기존 글의 source embed 요소를 카드 스타일로 업그레이드
+  const buildEmbedCollapsed = (s) => {
+    const coverHtml = s.cover
+      ? `<img src="${s.cover}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;pointer-events:none;" />`
+      : `<div style="width:44px;height:44px;border-radius:10px;background:#e5e7eb;flex-shrink:0;"></div>`
+    const meta = [s.creator, s.year].filter(Boolean).join(' · ')
+    return `${coverHtml}<div style="flex:1;min-width:0;"><p style="font-size:13px;font-weight:600;color:#1f2937;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title}</p>${meta ? `<p style="font-size:11px;color:#9ca3af;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${meta}</p>` : ''}</div>`
+  }
+
+  const buildEmbedExpanded = (s) => {
+    const coverHtml = s.cover
+      ? `<img src="${s.cover}" style="width:120px;height:120px;border-radius:12px;object-fit:cover;display:block;pointer-events:none;" />`
+      : `<div style="width:120px;height:120px;border-radius:12px;background:#e5e7eb;"></div>`
+    const meta = [s.creator, s.year].filter(Boolean).join(' · ')
+    return `<div style="display:inline-flex;flex-direction:column;gap:8px;">${coverHtml}<div><p style="font-size:13px;font-weight:700;color:#1f2937;margin:0 0 2px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title}</p>${meta ? `<p style="font-size:11px;color:#6b7280;margin:0;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${meta}</p>` : ''}</div></div>`
+  }
+
   useEffect(() => {
     if (!contentRef.current) return
-    const TYPE_LABELS = { music: '음악', book: '책', local: '장소', dict: '사전' }
     contentRef.current.querySelectorAll('[data-source-embed]').forEach((el) => {
       // 이미 카드 스타일이면 스킵 (div + 커버 이미지 포함)
       if (el.tagName === 'DIV' && el.querySelector('img, [style*="background:#e5e7eb"]')) return
@@ -464,22 +479,38 @@ export default function PostDetail() {
       }
       if (!s.title) return
 
-      const label = TYPE_LABELS[s.type] || s.type
-      const coverHtml = s.cover
-        ? `<img src="${s.cover}" style="width:120px;height:120px;border-radius:12px;object-fit:cover;display:block;pointer-events:none;" />`
-        : `<div style="width:120px;height:120px;border-radius:12px;background:#e5e7eb;"></div>`
-      const meta = [s.creator, s.year].filter(Boolean).join(' · ')
-
       const card = document.createElement('div')
       card.dataset.sourceEmbed = 'true'
-      if (el.dataset.sid) card.dataset.sid = el.dataset.sid
-      if (el.dataset.source) card.dataset.source = el.dataset.source
-      card.style.cssText = 'display:inline-block;padding:12px;border-radius:16px;background:#f3f4f6;margin:8px 0;'
-      card.innerHTML = `<div style="display:inline-flex;flex-direction:column;gap:8px;">${coverHtml}<div><p style="font-size:13px;font-weight:700;color:#1f2937;margin:0 0 2px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title}</p>${meta ? `<p style="font-size:11px;color:#6b7280;margin:0;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${meta}</p>` : ''}</div></div>`
+      card.dataset.expanded = 'false'
+      try { card.dataset.source = JSON.stringify(s) } catch (_) {}
+      card.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#f3f4f6;margin:8px 0;cursor:pointer;user-select:none;'
+      card.innerHTML = buildEmbedCollapsed(s)
 
       el.replaceWith(card)
     })
   }, [post?.id])
+
+  const handleContentClick = (e) => {
+    const embed = e.target.closest?.('[data-source-embed]')
+    if (!embed) return
+
+    let s = null
+    if (embed.dataset.source) {
+      try { s = JSON.parse(embed.dataset.source) } catch (_) {}
+    }
+    if (!s) return
+
+    const isExpanded = embed.dataset.expanded === 'true'
+    if (isExpanded) {
+      embed.dataset.expanded = 'false'
+      embed.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#f3f4f6;margin:8px 0;cursor:pointer;user-select:none;'
+      embed.innerHTML = buildEmbedCollapsed(s)
+    } else {
+      embed.dataset.expanded = 'true'
+      embed.style.cssText = 'display:inline-block;padding:12px;border-radius:16px;background:#f3f4f6;margin:8px 0;cursor:pointer;user-select:none;'
+      embed.innerHTML = buildEmbedExpanded(s)
+    }
+  }
 
   useEffect(() => {
     if (!post) return
@@ -673,6 +704,7 @@ export default function PostDetail() {
                   ref={contentRef}
                   className="write-editor text-sm text-gray-700 leading-relaxed"
                   dangerouslySetInnerHTML={{ __html: post.content }}
+                  onClick={handleContentClick}
                 />
               : blocks.map((block, i) => <ContentBlock key={i} block={block} />)
             }
