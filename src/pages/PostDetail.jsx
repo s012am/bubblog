@@ -319,7 +319,13 @@ export default function PostDetail() {
   const cancelLongPress = () => { clearTimeout(longPressTimer.current) }
 
   useEffect(() => {
-    if (showComments) setCommentTranslate(40)
+    if (showComments) {
+      setCommentTranslate(40)
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
   }, [showComments])
 
   useEffect(() => {
@@ -805,7 +811,7 @@ export default function PostDetail() {
               </button>
             </div>
             {/* 댓글 목록 */}
-            <div className="px-5 py-3 overflow-y-auto flex-1" style={{ paddingBottom: '80px' }}>
+            <div className="px-5 py-3 overflow-y-auto flex-1" style={{ paddingBottom: '80px', overscrollBehavior: 'contain' }}>
               {(post?.comments || []).length === 0 && (
                 <p className="text-xs text-gray-300 text-center py-10">아직 댓글이 없습니다.</p>
               )}

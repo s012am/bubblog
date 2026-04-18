@@ -5,6 +5,7 @@ import { useDraft } from '../context/DraftContext'
 import { searchMentionUsers, sendMentionNotifs } from '../lib/mentions'
 import MentionDropdown from '../components/MentionDropdown'
 import SourcePicker from '../components/SourcePicker'
+import ImageEditor from '../components/ImageEditor'
 
 const TOOLBAR = [
   { label: 'B', title: 'Bold',          cmd: 'bold',          style: { fontWeight: 800, fontSize: '14px' } },
@@ -54,6 +55,7 @@ export default function Write() {
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [visibility, setVisibility] = useState(editPost?.visibility ?? 'public')
   const [showSourcePicker, setShowSourcePicker] = useState(false)
+  const [editingImage, setEditingImage] = useState(null) // { dataUrl, savedRange }
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [showSizePicker, setShowSizePicker] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
@@ -610,29 +612,33 @@ export default function Write() {
     }
   }
 
+  const insertImageDataUrl = (dataUrl) => {
+    const range = savedRangeRef.current
+    if (range && editorRef.current?.contains(range.commonAncestorContainer)) {
+      const sel = window.getSelection()
+      sel.removeAllRanges()
+      sel.addRange(range)
+    } else {
+      editorRef.current?.focus()
+    }
+    document.execCommand('insertHTML', false, `<img src="${dataUrl}" style="max-width:100%;border-radius:0px;margin:8px 0;display:block;" />`)
+    setHasContent(true)
+    triggerAutoSave()
+  }
+
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files)
-    files.forEach((file) => {
-      const reader = new FileReader()
-      reader.onload = (ev) => {
-        const img = new Image()
-        img.onload = () => {
-          const MAX = 800
-          const scale = Math.min(1, MAX / Math.max(img.width, img.height))
-          const canvas = document.createElement('canvas')
-          canvas.width = img.width * scale
-          canvas.height = img.height * scale
-          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
-          const compressed = canvas.toDataURL('image/jpeg', 0.75)
-          editorRef.current?.focus()
-          document.execCommand('insertHTML', false, `<img src="${compressed}" style="max-width:100%;border-radius:0px;margin:8px 0;display:block;" />`)
-          setHasContent(true)
-          triggerAutoSave()
-        }
-        img.src = ev.target.result
-      }
-      reader.readAsDataURL(file)
-    })
+    // only open editor for the first file; ignore multiple for simplicity
+    const file = files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      // save current selection so we can restore it after editing
+      const sel = window.getSelection()
+      if (sel && sel.rangeCount) savedRangeRef.current = sel.getRangeAt(0).cloneRange()
+      setEditingImage(ev.target.result)
+    }
+    reader.readAsDataURL(file)
     e.target.value = ''
   }
 
@@ -1063,6 +1069,17 @@ export default function Write() {
         <SourcePicker
           onSelect={insertSourceInEditor}
           onClose={() => setShowSourcePicker(false)}
+        />
+      )}
+
+      {editingImage && (
+        <ImageEditor
+          src={editingImage}
+          onConfirm={(dataUrl) => {
+            setEditingImage(null)
+            insertImageDataUrl(dataUrl)
+          }}
+          onCancel={() => setEditingImage(null)}
         />
       )}
 
