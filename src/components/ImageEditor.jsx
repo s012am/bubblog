@@ -94,15 +94,20 @@ export default function ImageEditor({ src, onConfirm, onCancel }) {
     img.src = src
   }, [src])
 
-  // load Korean web fonts
+  // load Korean web fonts, re-render canvas once loaded
   useEffect(() => {
-    if (document.getElementById('image-editor-fonts')) return
+    if (document.getElementById('image-editor-fonts')) {
+      // already injected — just wait for fonts and re-render
+      document.fonts.ready.then(() => { if (imageRef.current) render() })
+      return
+    }
     const link = document.createElement('link')
     link.id   = 'image-editor-fonts'
     link.rel  = 'stylesheet'
     link.href = GOOGLE_FONTS_URL
+    link.onload = () => document.fonts.ready.then(() => { if (imageRef.current) render() })
     document.head.appendChild(link)
-  }, [])
+  }, [render])
 
   // ── canvas coordinate helper ──────────────────────────────────────
   const toCanvas = (e) => {
@@ -371,9 +376,10 @@ export default function ImageEditor({ src, onConfirm, onCancel }) {
     ctx.restore()
 
     if (strokes.some(s => s.points.length >= 2)) {
+      // layer uses full image dims + original coords; ctx.translate(-crop.x,-crop.y) handles clipping
       const layer = document.createElement('canvas')
-      layer.width  = crop.w
-      layer.height = crop.h
+      layer.width  = cw
+      layer.height = ch
       const lctx = layer.getContext('2d')
       strokes.forEach(stroke => {
         if (stroke.points.length < 2) return
@@ -384,8 +390,8 @@ export default function ImageEditor({ src, onConfirm, onCancel }) {
         lctx.lineCap     = 'round'
         lctx.lineJoin    = 'round'
         lctx.beginPath()
-        lctx.moveTo(stroke.points[0].x - crop.x, stroke.points[0].y - crop.y)
-        stroke.points.slice(1).forEach(p => lctx.lineTo(p.x - crop.x, p.y - crop.y))
+        lctx.moveTo(stroke.points[0].x, stroke.points[0].y)
+        stroke.points.slice(1).forEach(p => lctx.lineTo(p.x, p.y))
         lctx.stroke()
         lctx.restore()
       })
