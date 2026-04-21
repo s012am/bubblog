@@ -628,17 +628,14 @@ export default function Write() {
 
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files)
-    // only open editor for the first file; ignore multiple for simplicity
-    const file = files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      // save current selection so we can restore it after editing
-      const sel = window.getSelection()
-      if (sel && sel.rangeCount) savedRangeRef.current = sel.getRangeAt(0).cloneRange()
-      setEditingImage(ev.target.result)
-    }
-    reader.readAsDataURL(file)
+    if (!files.length) return
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount) savedRangeRef.current = sel.getRangeAt(0).cloneRange()
+    Promise.all(files.map(file => new Promise(resolve => {
+      const reader = new FileReader()
+      reader.onload = ev => resolve(ev.target.result)
+      reader.readAsDataURL(file)
+    }))).then(dataUrls => setEditingImage(dataUrls))
     e.target.value = ''
   }
 
@@ -1074,10 +1071,10 @@ export default function Write() {
 
       {editingImage && (
         <ImageEditor
-          src={editingImage}
-          onConfirm={(dataUrl) => {
+          srcs={editingImage}
+          onConfirm={(dataUrls) => {
             setEditingImage(null)
-            insertImageDataUrl(dataUrl)
+            dataUrls.forEach(url => insertImageDataUrl(url))
           }}
           onCancel={() => setEditingImage(null)}
         />
